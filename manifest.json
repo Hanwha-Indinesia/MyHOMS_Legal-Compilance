@@ -1,0 +1,18 @@
+{
+  "name": "HMSI Legal Compliance Management System",
+  "short_name": "HMSI-LCMS",
+  "description": "Pengelolaan kepatuhan legal, perizinan, dan evaluasi kewajiban HMSI.",
+  "id": "./",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F3F4F6",
+  "theme_color": "#F37321",
+  "lang": "id",
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
