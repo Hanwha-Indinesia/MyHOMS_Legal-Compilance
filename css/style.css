@@ -280,7 +280,15 @@ select.inp{padding-right:28px;appearance:none;-webkit-appearance:none;background
 .file .fn{flex:1;min-width:0}.file .fn b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .file .fn span{font-size:11.5px;color:var(--tx3)}
 .rep{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr) 150px 36px;gap:8px;align-items:start;padding:10px;border:1px solid var(--bd);border-radius:var(--rm);background:var(--sf2)}
-.rep.k{grid-template-columns:110px 128px minmax(0,1fr) 170px 36px}
+.rep.k{grid-template-columns:110px 128px minmax(0,1fr) minmax(0,1fr) 36px}
+.rep-izin{grid-column:1/-1;margin:0}
+.kwcard{background:var(--sf2);border:1px solid var(--bd);border-radius:var(--rm);padding:14px}
+.kwc-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.2fr);gap:16px}
+.kwc-l{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tx3);margin-bottom:4px}
+.kwc-u{margin-top:12px;padding-top:12px;border-top:1px dashed var(--bd);font-size:13.5px;line-height:1.55}
+.izpick{width:100%;text-align:left;cursor:pointer;font:inherit;background:#fff}
+.izpick.on{border-color:var(--o);background:var(--o-t)}
+@media(max-width:720px){.kwc-grid{grid-template-columns:minmax(0,1fr)}}
 .add-row{border:1px dashed var(--bd2);background:var(--sf);color:var(--o-d);border-radius:var(--rm);height:36px;width:100%;font:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
 .add-row:hover{border-color:var(--o);background:var(--o-t)}
 
