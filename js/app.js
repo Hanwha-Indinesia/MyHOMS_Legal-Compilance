@@ -161,6 +161,14 @@ function pesanJaringan(err) {
   if (/Authorization|PERMISSION|izin/i.test(m)) return 'Server menolak permintaan (izin). Hubungi administrator.';
   return m || 'Terjadi kesalahan tak terduga.';
 }
+/* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
+const APP_UI_VERSI = '2.0.3';
+function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
+function tampilVersi() {
+  const el = document.getElementById('sbVer');
+  if (el) { el.textContent = teksVersi(); el.title = 'Tampilan ' + APP_UI_VERSI + (S.verServer ? ' • Server ' + S.verServer : ''); }
+  document.querySelectorAll('.ver-txt').forEach(x => { x.textContent = teksVersi(); });
+}
 /* Konfigurasi: hanya URL /exec (publik). Placeholder ditolak. */
 function gasUrl() {
   const u = (window.APP_CONFIG && window.APP_CONFIG.GAS_URL) || '';
@@ -183,7 +191,7 @@ function kirimHttp(action, data) {
   }).then(r => {
     if (!r.ok) throw new Error('Server mengembalikan status ' + r.status + '.');
     return r.json();
-  }).then(res => { res._rtt = Math.round(performance.now() - t0); S.rtt = res._rtt; return res; });
+  }).then(res => { res._rtt = Math.round(performance.now() - t0); S.rtt = res._rtt; if (res.v && res.v !== S.verServer) { S.verServer = res.v; tampilVersi(); } return res; });
 }
 function api(action, data) {
   const baca = AKSI_BACA.test(action);
@@ -578,7 +586,7 @@ function daftarNotif() {
 function tampilAuth(html) { $('#app').classList.remove('on'); const a = $('#auth'); a.innerHTML = html; a.classList.add('on'); sembunyiBoot(); }
 function sembunyiBoot() { const b = $('#boot'); if (b) { b.style.opacity = '0'; setTimeout(() => b.remove(), 200); } }
 function brand() { return `<div class="brand"><div class="sb-logo">HMSI</div><div><div class="b7" style="font-size:15px">${esc(cfg('nama_aplikasi', 'HMSI-LCMS'))}</div><div class="xsmall muted">Sistem Manajemen Kepatuhan Hukum &amp; Regulasi Pertambangan</div></div></div>`; }
-function kakiAuth() { return `<div class="afoot">HMSI Legal Compliance Management System • v1.0<br>Mendukung SMKP Minerba Sub Elemen II.3 &amp; V.3</div>`; }
+function kakiAuth() { return `<div class="afoot">HMSI Legal Compliance Management System<br><b class="ver-txt">${teksVersi()}</b> • Mendukung SMKP Minerba Sub Elemen II.3 &amp; V.3</div>`; }
 function layarLogin(pesan, jenis) {
   tampilAuth(`<div class="acard" id="acard">${brand()}<h2>Masuk ke Akun Anda</h2><p class="lead">Gunakan Nomor Registrasi Pokok (NRP) dan PIN Anda untuk mengakses portal kepatuhan.</p>
     ${pesan ? `<div class="note ${jenis || 'b'} mb12">${ic(jenis === 'g' ? 'check_circle' : 'info')}<div>${esc(pesan)}</div></div>` : ''}
@@ -697,7 +705,7 @@ Object.assign(ACT, {
   sel1: t => { const s = S.ui.sel[t.dataset.t] || (S.ui.sel[t.dataset.t] = new Set()); if (t.checked) s.add(t.dataset.id); else s.delete(t.dataset.id); renderSec(S.ui.sec); },
   selall: t => { const s = S.ui.sel[t.dataset.t] || (S.ui.sel[t.dataset.t] = new Set()); $$(`input[data-act="sel1"][data-t="${t.dataset.t}"]`).forEach(c => { if (t.checked) s.add(c.dataset.id); else s.delete(c.dataset.id); }); renderSec(S.ui.sec); },
   selclear: t => { S.ui.sel[t.dataset.t] = new Set(); renderSec(S.ui.sec); },
-  umenu: t => popMenu(t, `<div class="mh"><b>${esc(S.me.nama)}</b><br>NRP ${esc(S.me.nrp)} • ${esc(ROLE_LABEL[S.me.role])}<br>${esc(namaSite(S.me.site))}</div><hr><button data-act="gantipin">${ic('key')} Ganti PIN</button><button data-act="muatulang">${ic('sync')} Muat ulang data</button><hr><button class="r" data-act="logout">${ic('logout')} Keluar</button>`),
+  umenu: t => popMenu(t, `<div class="mh"><b>${esc(S.me.nama)}</b><br>NRP ${esc(S.me.nrp)} • ${esc(ROLE_LABEL[S.me.role])}<br>${esc(namaSite(S.me.site))}<br><span class="ver-txt" style="color:var(--tx3,#6B7280);font-size:11px">${teksVersi()}</span></div><hr><button data-act="gantipin">${ic('key')} Ganti PIN</button><button data-act="muatulang">${ic('sync')} Muat ulang data</button><hr><button class="r" data-act="logout">${ic('logout')} Keluar</button>`),
   notif: t => { const L = daftarNotif(); popMenu(t, `<div class="mh b6" style="padding:12px">Perlu perhatian (${L.length})</div>` + (L.length ? L.map(n => `<div class="ntf-i" data-act="buka-notif" data-sec="${n.sec}" data-id="${esc(n.id || '')}" data-tab="${n.tab || ''}" role="button" tabindex="0">${ic(n.i, 't-' + n.v)}<div style="min-width:0"><b>${esc(n.t)}</b><div class="muted xsmall clamp2">${esc(n.s)}</div></div></div>`).join('') : '<div class="empty small">Tidak ada hal mendesak. 🎉</div>'), 'ntf'); },
   'buka-notif': t => { if (t.dataset.sec === 'rtp') { S.ui.tab.evaluasi = 'rtp'; go('evaluasi'); bukaRtp(t.dataset.id); } else { if (t.dataset.tab) S.ui.tab[t.dataset.sec] = t.dataset.tab; go(t.dataset.sec, t.dataset.id ? { id: t.dataset.id } : {}); } },
   pratinjau: t => pratinjau(t.dataset.id),
@@ -2276,3 +2284,4 @@ function boot() {
   else layarLogin();
 }
 boot();
+tampilVersi();
