@@ -521,3 +521,5 @@ select.inp{padding-right:28px;appearance:none;-webkit-appearance:none;background
 }
 @media (prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 @media print{.sb,.tb,.sticky-f,#toasts{display:none!important}.main{margin:0}}
+
+.sb-ver{padding:6px 16px 10px;font-size:11px;color:var(--tx2,#6B7280);text-align:center;letter-spacing:.2px}
