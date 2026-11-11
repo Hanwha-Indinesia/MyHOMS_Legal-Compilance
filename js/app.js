@@ -151,8 +151,25 @@ const D = {
   antrean: () => S.data.antrean || [],
   kw: () => (S.data.kewajiban || []).filter(k => aktif(k) && siteOk(k.site_berlaku))
 };
-/** Kewajiban aktif (dalam cakupan site) yang belum punya evaluasi sama sekali pada periode tertentu. */
-function kwBelumEval(per) { return D.kw().filter(k => !D.ev(per).some(e => e.id_kewajiban === k.id_kewajiban)); }
+/** Tugas evaluasi akun site: (1) kewajiban per site yang belum dievaluasi pada periode, (2) evaluasi Pending terverifikasi yang sudah melewati target tanggal dan belum ditindaklanjuti. */
+function kwBelumEval(per) {
+  const out = [], t = today();
+  const sites = siteList().filter(x => siteOk(x.kode)).map(x => x.kode);
+  const semua = (S.data.evaluasi || []).filter(aktif);
+  const berlaku = (v, st) => !v || String(v).toUpperCase() === 'ALL' || String(v).split(',').map(x => x.trim()).includes(st);
+  (S.data.kewajiban || []).filter(aktif).forEach(k => {
+    const r = I().reg1[k.id_reg1]; if (!r || !aktif(r) || r.status_berlaku === 'Dicabut') return;
+    sites.forEach(st => {
+      if (!berlaku(k.site_berlaku, st) || !berlaku(r.site_berlaku, st)) return;
+      if (!semua.some(e => e.site === st && e.id_kewajiban === k.id_kewajiban && e.periode === per)) out.push({ kw: k.id_kewajiban, site: st, per, jenis: 'baru' });
+    });
+  });
+  const tindak = [];
+  semua.filter(e => e.hasil === 'Pending' && e.status_verifikasi === 'Terverifikasi' && e.tanggal_tindak_lanjut && e.tanggal_tindak_lanjut < t && sites.includes(e.site)).forEach(e => {
+    if (!semua.some(x => x.id_evaluasi !== e.id_evaluasi && x.site === e.site && x.id_kewajiban === e.id_kewajiban && x.periode === e.periode)) tindak.push({ kw: e.id_kewajiban, site: e.site, per: e.periode, jenis: 'tindak', pend: e });
+  });
+  return tindak.concat(out);
+}
 
 /* ───────────── API (satu pintu ke server) ───────────── */
 function pesanJaringan(err) {
@@ -162,7 +179,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.0.4';
+const APP_UI_VERSI = '2.1.0';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -577,7 +594,9 @@ function daftarNotif() {
     const e = D.ev().filter(x => x.status_verifikasi === 'Menunggu Verifikasi' && x.evaluator_nrp !== S.me.nrp).length; if (e) L.push({ i: 'fact_check', v: 'b', t: `${e} evaluasi menunggu verifikasi`, s: 'Register 3 — Evaluasi', sec: 'evaluasi', w: 4 });
   }
   if (is(R.SITE)) {
-    const k = kwBelumEval(periodeAktif()).length; if (k) L.push({ i: 'assignment_late', v: 'o', t: `${k} kewajiban belum dievaluasi`, s: `Register 3 — Evaluasi & RTP • ${labelPeriode(periodeAktif())}`, sec: 'evaluasi', w: 4 });
+    const tg = kwBelumEval(periodeAktif()), k = tg.filter(x => x.jenis === 'baru').length, pt = tg.length - k;
+    if (pt) L.push({ i: 'schedule', v: 'a', t: `${pt} evaluasi Pending perlu ditindaklanjuti`, s: 'Target tanggal sudah lewat • Register 3', sec: 'evaluasi', w: 3 });
+    if (k) L.push({ i: 'assignment_late', v: 'o', t: `${k} kewajiban belum dievaluasi`, s: `Register 3 — Evaluasi & RTP • ${labelPeriode(periodeAktif())}`, sec: 'evaluasi', w: 4 });
   }
   return L.sort((a, b) => a.w - b.w).slice(0, 25);
 }
@@ -1197,9 +1216,9 @@ function lampiranAntreanCard(a) {
 }
 function barisKw(k, i) {
   k = k || {};
-  return `<div class="rep k" data-kw="${i}"><input class="inp" name="kw_pasal" placeholder="Pasal/butir" value="${esc(k.pasal_butir || '')}" maxlength="200" aria-label="Pasal"><select class="inp" name="kw_period" aria-label="Periodisitas">${opsi(['Bulanan', 'Triwulan', 'Semester', 'Tahunan', 'Insidental'], k.periodisitas || 'Semester')}</select><input class="inp" name="kw_uraian" placeholder="Uraian kewajiban yang harus dipenuhi" value="${esc(k.uraian_kewajiban || '')}" maxlength="3000" aria-label="Uraian kewajiban"><button type="button" class="btn gh ic" data-act="kw-hapus" aria-label="Hapus baris">${ic('delete')}</button></div>`;
+  return `<div class="rep k" data-kw="${i}"><input class="inp" name="kw_pasal" placeholder="Pasal/butir" value="${esc(k.pasal_butir || '')}" maxlength="200" aria-label="Pasal"><select class="inp" name="kw_period" aria-label="Periodisitas">${opsi(['Bulanan', 'Triwulan', 'Semester', 'Tahunan', 'Insidental'], k.periodisitas || 'Semester')}</select><input class="inp" name="kw_uraian" placeholder="Uraian kewajiban yang harus dipenuhi" value="${esc(k.uraian_kewajiban || '')}" maxlength="3000" aria-label="Uraian kewajiban"><input class="inp" name="kw_bukti" placeholder="Bukti yang diwajibkan (mis. SK KTT, laporan uji)" value="${esc(k.bukti_wajib || '')}" maxlength="500" aria-label="Bukti yang diwajibkan"><button type="button" class="btn gh ic" data-act="kw-hapus" aria-label="Hapus baris">${ic('delete')}</button><label class="cbx rep-izin"><input type="checkbox" name="kw_izin" ${k.butuh_izin === 'Ya' ? 'checked' : ''}> Bukti berupa izin / lisensi (dipilih dari Register 2 saat evaluasi)</label></div>`;
 }
-function bacaKw(root) { return $$('[data-kw]', root).map(r => ({ pasal_butir: $('[name=kw_pasal]', r).value.trim(), periodisitas: $('[name=kw_period]', r).value, uraian_kewajiban: $('[name=kw_uraian]', r).value.trim() })).filter(k => k.uraian_kewajiban); }
+function bacaKw(root) { return $$('[data-kw]', root).map(r => ({ pasal_butir: $('[name=kw_pasal]', r).value.trim(), periodisitas: $('[name=kw_period]', r).value, uraian_kewajiban: $('[name=kw_uraian]', r).value.trim(), bukti_wajib: $('[name=kw_bukti]', r).value.trim(), butuh_izin: $('[name=kw_izin]', r).checked ? 'Ya' : 'Tidak' })).filter(k => k.uraian_kewajiban); }
 function formVerif(a, lama) {
   const statusLama = a.jenis_temuan === 'Pencabutan' ? 'Dicabut' : (a.jenis_temuan === 'Perubahan' ? 'Diubah' : '');
   const reg1Opts = (S.data.reg1 || []).filter(aktif).map(r => [r.id_reg1, `${r.id_reg1} — ${judulReg(r)}`]);
@@ -1333,7 +1352,7 @@ HAL.reg1d = (el, p) => {
   let isiTab = '';
   if (tab === 'kw') isiTab = `${can.reg1() ? `<div class="fbar" style="justify-content:flex-end"><button class="btn p sm" data-act="kw-form" data-reg="${esc(r.id_reg1)}">${ic('add')} Tambah Kewajiban</button></div>` : ''}${tabel('kw' + r.id_reg1, { key: 'id_kewajiban', rows: kws.sort((a, b) => (aktif(b) - aktif(a)) || String(a.id_kewajiban).localeCompare(b.id_kewajiban)), unit: 'kewajiban', rowCls: k => aktif(k) ? '' : 'tmp', empty: kosong('rule', 'Belum ada kewajiban pasal', 'Tambahkan pasal/butir kewajiban agar dapat dievaluasi.'), cols: [
     { l: 'Pasal / Butir', r: k => `<div class="t1">${esc(k.pasal_butir || '–')}</div><div class="t2 mono">${esc(k.id_kewajiban)}</div>` },
-    { l: 'Uraian Kewajiban', r: k => `<div style="max-width:420px">${esc(k.uraian_kewajiban)}</div>${aktif(k) ? '' : pill('Arsip', 'n')}` },
+    { l: 'Uraian Kewajiban', r: k => `<div style="max-width:420px">${esc(k.uraian_kewajiban)}</div>${k.bukti_wajib ? `<div class="small muted mt8">Bukti: ${esc(k.bukti_wajib)}</div>` : ''}${k.butuh_izin === 'Ya' ? ' ' + pill('Izin/lisensi', 'b', false) : ''}${aktif(k) ? '' : pill('Arsip', 'n')}` },
     { l: 'Site / Periode', r: k => `<div class="small">${esc(namaSite(k.site_berlaku))}</div><div class="t2">${esc(k.periodisitas || '–')}</div>` },
     { l: 'Status ' + labelPeriode(per).replace('Semester ', 'Smt '), r: statKw },
     { l: '', cls: 'act', r: k => can.reg1() ? `<button class="btn gh ic sm" data-act="kw-form" data-reg="${esc(r.id_reg1)}" data-id="${esc(k.id_kewajiban)}" title="Ubah" aria-label="Ubah kewajiban">${ic('edit')}</button><button class="btn gh ic sm" data-act="kw-arsip" data-id="${esc(k.id_kewajiban)}" title="${aktif(k) ? 'Arsipkan' : 'Pulihkan'}" aria-label="${aktif(k) ? 'Arsipkan' : 'Pulihkan'}">${ic(aktif(k) ? 'archive' : 'unarchive')}</button>` : '' }
@@ -1432,6 +1451,8 @@ Object.assign(ACT, {
       modal({ title: 'Ubah Kewajiban', sub: reg ? judulReg(reg) : '', icon: 'rule', body: `<form id="fKw" class="frm" novalidate>
         ${fld({ n: 'pasal_butir', l: 'Pasal / butir', v: k.pasal_butir, req: true, max: 200, ph: 'Contoh: Pasal 14 ayat (2)' })}${fld({ n: 'periodisitas', l: 'Periodisitas evaluasi', t: 'select', opts: ['Bulanan', 'Triwulan', 'Semester', 'Tahunan', 'Insidental'], v: k.periodisitas, ph: false })}
         ${fld({ n: 'uraian_kewajiban', l: 'Uraian kewajiban', t: 'textarea', rows: 4, v: k.uraian_kewajiban, req: true, full: true, max: 3000 })}
+        ${fld({ n: 'bukti_wajib', l: 'Bukti yang diwajibkan', v: k.bukti_wajib, full: true, max: 500, ph: 'Contoh: SK Penunjukan KTT, laporan uji, Izin KIM' })}
+        <div class="full"><label class="cbx"><input type="checkbox" name="butuh_izin" ${k.butuh_izin === 'Ya' ? 'checked' : ''}> Bukti berupa izin / lisensi (site memilih dokumen dari Register 2 saat evaluasi)</label></div>
         <div class="full">${fld({ n: 'site_berlaku', l: 'Site berlaku (kosongkan = semua site)', t: 'checks', v: k.site_berlaku === 'ALL' ? '' : k.site_berlaku, opts: (S.data.sites || []).map(s => [s.kode, s.nama]) })}</div></form>`,
         foot: `<button class="btn gh" data-act="mclose">Batal</button><button class="btn p" data-act="kw-simpan" data-reg="${esc(t.dataset.reg)}" data-id="${esc(t.dataset.id)}">${ic('save')} Simpan</button>` });
     } else {
@@ -1448,7 +1469,7 @@ Object.assign(ACT, {
     const f = $('#fKw');
     if (t.dataset.id) {
       if (!validasi(f)) return;
-      const v = bacaForm(f); v.site_berlaku = v.site_berlaku || 'ALL'; v.id_reg1 = t.dataset.reg; v.id_kewajiban = t.dataset.id;
+      const v = bacaForm(f); v.site_berlaku = v.site_berlaku || 'ALL'; v.id_reg1 = t.dataset.reg; v.id_kewajiban = t.dataset.id; v.butuh_izin = v.butuh_izin ? 'Ya' : 'Tidak';
       v.departemen_penanggung_jawab = (I().kw[t.dataset.id] || {}).departemen_penanggung_jawab || '';
       tutupModal(); kirim('kewajiban.simpan', v, { apply: () => upsert('kewajiban', 'id_kewajiban', v) }).catch(() => { }); return;
     }
@@ -1555,9 +1576,9 @@ HAL.reg2d = (el, p) => {
       <div class="card"><div class="card-b"><div class="xsmall muted b6 mb8">INTEGRITAS AUDIT MANDATORI</div><div class="kpi-v">${lamp.length ? '100%' : '0%'}<small class="${lamp.length ? 't-g' : 't-r'}">${lamp.length ? 'Terdokumentasi' : 'Belum ada evidence'}</small></div><p class="small muted" style="margin:6px 0 0">Diperbarui ${fmtWkt(r.updated_at)} oleh ${esc(namaUser(r.updated_by))}.</p></div></div>
     </div></div>`;
 };
-function formReg2(r) {
+function formReg2(r, pre) {
   const baru = !r, pic = is(R.PIC);
-  r = r || { jenis_dokumen: 'Izin', site: S.ui.site !== 'ALL' ? S.ui.site : (mySites() || [''])[0] };
+  r = r || Object.assign({ jenis_dokumen: 'Izin', site: S.ui.site !== 'ALL' ? S.ui.site : (mySites() || [''])[0] }, pre || {});
   const users = (S.data.users || []).filter(u => u.status === 'Aktif').map(u => [u.nrp, `${u.nama} (${u.nrp}) — ${ROLE_LABEL[u.role] || u.role}`]);
   modal({ title: baru ? 'Tambah Izin / Lisensi / Sertifikasi' : 'Ubah ' + r.id_izin, sub: baru ? 'Status masa berlaku dihitung otomatis dari tanggal kedaluwarsa.' : r.nama_dokumen, icon: 'verified', size: 'lg',
     body: `<form id="fReg2" class="frm" novalidate>
@@ -1567,12 +1588,12 @@ function formReg2(r) {
       ${fld({ n: 'objek', l: 'Objek / unit / personel', v: r.objek, max: 300 })}${fld({ n: 'nama_pemegang', l: 'Nama pemegang', v: r.nama_pemegang, req: true, max: 200 })}
       ${fld({ n: 'lembaga_penerbit', l: 'Lembaga penerbit / PJK3', v: r.lembaga_penerbit, max: 200 })}${fld({ n: 'id_reg1', l: 'Dasar hukum (Register 1)', t: 'select', opts: (S.data.reg1 || []).filter(aktif).map(x => [x.id_reg1, x.id_reg1 + ' — ' + judulReg(x)]), v: r.id_reg1, ph: '— Opsional —' })}
       <div class="fsec"><span class="bar"></span>Lokasi &amp; Penanggung Jawab</div>
-      ${fld({ n: 'site', l: 'Site', t: 'select', opts: siteList().map(s => [s.kode, s.nama]), v: r.site, req: true, ro: pic })}${fld({ n: 'departemen', l: 'Departemen', t: 'select', opts: deptList().map(d => [d.kode, d.nama]), v: r.departemen, req: true, ro: pic })}
+      ${fld({ n: 'site', l: 'Site', t: 'select', opts: siteList().map(s => [s.kode, s.nama]), v: r.site, req: true, ro: pic || !!(pre && pre.dariEval) })}${fld({ n: 'departemen', l: 'Departemen', t: 'select', opts: deptList().map(d => [d.kode, d.nama]), v: r.departemen, req: true, ro: pic })}
       ${fld({ n: 'pic_nrp', l: 'PIC (pengguna terdaftar)', t: 'select', opts: users, v: r.pic_nrp, req: true, full: true, ro: pic })}
       <div class="fsec"><span class="bar"></span>Masa Berlaku</div>
       ${fld({ n: 'tanggal_terbit', l: 'Tanggal terbit', t: 'date', v: r.tanggal_terbit, req: true })}${fld({ n: 'tanggal_kedaluwarsa', l: 'Tanggal kedaluwarsa', t: 'date', v: r.tanggal_kedaluwarsa, help: 'Kosongkan bila dokumen berlaku tanpa batas waktu.' })}
       ${fld({ n: 'catatan', l: 'Catatan', t: 'textarea', rows: 2, v: r.catatan, full: true, max: 2000 })}</form>`,
-    foot: `<span class="lf">${ic('shield', 's')} Tercatat di Audit_Log</span><button class="btn gh" data-act="mclose">Batal</button><button class="btn p" data-act="reg2-simpan" data-id="${esc(r.id_izin || '')}">${ic('save')} Simpan</button>` });
+    foot: `<span class="lf">${ic('shield', 's')} Tercatat di Audit_Log</span><button class="btn gh" data-act="mclose">Batal</button><button class="btn p" data-act="reg2-simpan" data-id="${esc(r.id_izin || '')}" ${pre && pre.dariEval ? `data-eval="1" data-site="${esc(r.site)}"` : ''}>${ic('save')} Simpan</button>` });
 }
 Object.assign(ACT, {
   'reg2-simpan': t => {
@@ -1580,13 +1601,15 @@ Object.assign(ACT, {
     if (!validasi(f, x => ({ tanggal_kedaluwarsa: x.tanggal_kedaluwarsa && x.tanggal_kedaluwarsa < x.tanggal_terbit ? 'Tidak boleh sebelum tanggal terbit.' : '' }))) return;
     const v = bacaForm(f), id = t.dataset.id;
     if (is(R.PIC) && id) { const r = I().reg2[id]; v.site = r.site; v.departemen = r.departemen; v.pic_nrp = r.pic_nrp; }
+    const dariEval = t.dataset.eval === '1' && S.ui.ef;
+    if (dariEval) v.site = t.dataset.site;
     v.id_izin = id;
     const tmpId = id || uid('tmpI');
     tutupModal();
     kirim('reg2.simpan', v, {
-      apply: () => upsert('reg2', 'id_izin', Object.assign({}, v, { id_izin: tmpId, status_aktif: 'Active', _tmp: !id, created_at: new Date().toISOString().slice(0, 19).replace('T', ' ') })),
-      sukses: res => { gantiId('reg2', 'id_izin', tmpId, res.data.reg2); },
-      gagal: () => setTimeout(() => { formReg2(Object.assign({}, I().reg2[id] || {}, v)); }, 50)
+      apply: () => { upsert('reg2', 'id_izin', Object.assign({}, v, { id_izin: tmpId, status_aktif: 'Active', _tmp: !id, created_at: new Date().toISOString().slice(0, 19).replace('T', ' ') })); if (dariEval && S.ui.ef) { S.ui.ef.izin = tmpId; const h = $('[name=id_izin]', $('#efForm')); if (h) h.value = tmpId; PARTIAL.efIzin(); } },
+      sukses: res => { gantiId('reg2', 'id_izin', tmpId, res.data.reg2); S.idx = null; if (dariEval && S.ui.ef && S.ui.ef.izin === tmpId) { S.ui.ef.izin = res.data.reg2.id_izin; const h = $('[name=id_izin]', $('#efForm')); if (h) h.value = S.ui.ef.izin; PARTIAL.efIzin(); } },
+      gagal: () => setTimeout(() => { if (dariEval && S.ui.ef && S.ui.ef.izin === tmpId) { S.ui.ef.izin = ''; PARTIAL.efIzin(); } formReg2(id ? Object.assign({}, I().reg2[id] || {}, v) : null, id ? null : Object.assign({}, v, { dariEval: !!dariEval })); }, 50)
     }).catch(() => { });
   },
   'reg2-arsip': async t => {
@@ -1655,8 +1678,8 @@ function tabEval(evs, per) {
   const rows = evs.filter(e => { const k = I().kw[e.id_kewajiban] || {}, r = I().reg1[e.id_reg1] || {}; return (st.hasil === 'ALL' || e.hasil === st.hasil) && (!st.nc || e.hasil === 'Non-Compliant') && (st.ver === 'ALL' || e.status_verifikasi === st.ver) && (st.dept === 'ALL' || k.departemen_penanggung_jawab === st.dept) && cari(st.q, e.id_evaluasi, r.nomor, r.judul, judulReg(r), k.pasal_butir, k.uraian_kewajiban, e.temuan, namaSite(e.site)); })
     .sort((a, b) => (a.status_verifikasi === 'Menunggu Verifikasi' ? -1 : 0) - (b.status_verifikasi === 'Menunggu Verifikasi' ? -1 : 0) || String(b.id_evaluasi).localeCompare(a.id_evaluasi));
   const ring = `<div class="ring" style="background:conic-gradient(var(--o) ${(p || 0) * 3.6}deg,var(--o-t) 0)"><div>${ic('verified')}</div></div>`;
-  return (belum.length ? `<div class="card" style="border-left:3px solid var(--o);margin-bottom:16px"><div class="card-h"><div class="ic" style="background:var(--o-t);color:var(--o-d)">${ic('assignment_late')}</div><div class="sp"><h3>${belum.length} Kewajiban Belum Dievaluasi — ${esc(labelPeriode(per))}</h3><p>Kewajiban pasal dari Register 1 yang sudah berlaku untuk site Anda, tetapi belum ada evaluasinya di periode ini.</p></div></div>
-    <div class="card-b col" style="gap:8px">${belum.slice(0, 6).map(k => { const r = I().reg1[k.id_reg1] || {}; return `<div class="file" style="align-items:center"><div class="fic" style="background:var(--o-t);color:var(--o-d)">${ic('rule')}</div><div class="fn"><b>${esc(judulReg(r))}${k.pasal_butir ? ' — ' + esc(k.pasal_butir) : ''}</b><span class="clamp2">${esc(k.uraian_kewajiban)}</span></div><button class="btn sm p" data-act="eval-buat-kw" data-id="${esc(k.id_kewajiban)}">${ic('add')} Buat Evaluasi</button></div>`; }).join('')}${belum.length > 6 ? `<div class="small muted">+${belum.length - 6} kewajiban lainnya belum dievaluasi.</div>` : ''}</div></div>` : '')
+  return (belum.length ? `<div class="card" style="border-left:3px solid var(--o);margin-bottom:16px"><div class="card-h"><div class="ic" style="background:var(--o-t);color:var(--o-d)">${ic('assignment_late')}</div><div class="sp"><h3>${belum.length} Kewajiban Perlu Dievaluasi — ${esc(labelPeriode(per))}</h3><p>Evaluasi dimulai dari daftar ini. Klik <b>Buat Evaluasi</b> pada kewajiban yang akan Anda periksa; peraturan, site, dan periode terisi otomatis.</p></div></div>
+    <div class="card-b col" style="gap:8px">${belum.slice(0, 8).map(it => { const k = I().kw[it.kw] || {}, r = I().reg1[k.id_reg1] || {}, tnd = it.jenis === 'tindak'; return `<div class="file" style="align-items:center"><div class="fic" style="background:var(--o-t);color:var(--o-d)">${ic(tnd ? 'schedule' : 'rule')}</div><div class="fn"><b>${esc(judulReg(r))}${k.pasal_butir ? ' — ' + esc(k.pasal_butir) : ''} <span class="pill n">${esc(namaSite(it.site))}</span>${tnd ? ' ' + pill('Pending lewat target', 'a', false) : ''}</b><span class="clamp2">${esc(k.uraian_kewajiban)}</span>${tnd ? `<span class="small t-a">Target ${fmtTgl(it.pend.tanggal_tindak_lanjut)} • alasan: ${esc(it.pend.temuan)}</span>` : ''}</div><button class="btn sm p" data-act="eval-buat-kw" data-id="${esc(it.kw)}" data-site="${esc(it.site)}" data-per="${esc(it.per)}">${ic(tnd ? 'replay' : 'add')} ${tnd ? 'Tindak lanjuti' : 'Buat Evaluasi'}</button></div>`; }).join('')}${belum.length > 8 ? `<div class="small muted">+${belum.length - 8} kewajiban lainnya.</div>` : ''}</div></div>` : '')
     + `<div class="grid g6 kpis mb16" style="grid-template-columns:repeat(4,minmax(0,1fr)) minmax(0,2fr)">
       ${kpi({ label: 'COMPLIANT', value: nf(h('Compliant')), unit: 'kewajiban', icon: 'check_circle', ic: 'g', vc: 't-g', sub: `Proporsi ${fpct(pct(h('Compliant'), evs.length))} • ${pill('Evidence', 'g', false)}`, act: 'ev-hasil', v: 'Compliant', sel: st.hasil === 'Compliant' })}
       ${kpi({ label: 'NON-COMPLIANT', value: nf(h('Non-Compliant')), unit: 'kewajiban', icon: 'warning', ic: 'r', vc: 't-r', l: h('Non-Compliant') ? 'r' : '', sub: `Rasio ${fpct(pct(h('Non-Compliant'), evs.length))} • ${pill('Wajib RTP', 'r', false)}`, act: 'ev-hasil', v: 'Non-Compliant', sel: st.hasil === 'Non-Compliant' })}
@@ -1672,7 +1695,7 @@ function tabEval(evs, per) {
       <select class="inp" data-ch="flt" data-t="ev" data-k="hasil" aria-label="Hasil">${opsi([['ALL', 'Semua status hasil']].concat(HASIL), st.hasil)}</select>
       <select class="inp" data-ch="flt" data-t="ev" data-k="ver" aria-label="Status verifikasi">${opsi([['ALL', 'Semua status verifikasi'], 'Draft', 'Menunggu Verifikasi', 'Terverifikasi'], st.ver)}</select>
       <label class="row small" style="gap:8px"><span class="tgl"><input type="checkbox" data-ch="flt" data-t="ev" data-k="nc" ${st.nc ? 'checked' : ''}><span></span></span><span class="t-r b6">${ic('priority_high', 'xs')} Hanya Non-Compliant</span></label></div>
-      ${tabel('ev', { key: 'id_evaluasi', rows, rowAct: 'ev-buka', unit: `evaluasi ${labelPeriode(per)}`, rowCls: e => e.hasil === 'Non-Compliant' ? 'crit' : '', empty: kosong('fact_check', 'Belum ada evaluasi', `Belum ada evaluasi untuk ${labelPeriode(per)}${can.evalTambah() ? '. Tambahkan evaluasi semester untuk kewajiban di Register 1.' : '.'}`, can.evalTambah() ? `<button class="btn p" data-act="go" data-sec="evalform">${ic('add')} Tambah Evaluasi</button>` : ''), cols: [
+      ${tabel('ev', { key: 'id_evaluasi', rows, rowAct: 'ev-buka', unit: `evaluasi ${labelPeriode(per)}`, rowCls: e => e.hasil === 'Non-Compliant' ? 'crit' : '', empty: kosong('fact_check', 'Belum ada evaluasi', `Belum ada evaluasi untuk ${labelPeriode(per)}${can.evalTambah() ? '. Mulai dari daftar kewajiban yang perlu dievaluasi di atas.' : '.'}`, ''), cols: [
         { l: 'ID Evaluasi', r: e => `<div class="idc" style="color:${WARNA[PILL[e.hasil]] || ''}">${esc(e.id_evaluasi)}</div><div class="t2">${fmtTgl(e.tanggal_evaluasi)}</div>` },
         { l: 'Regulasi & Pasal Terkait', r: e => { const r = I().reg1[e.id_reg1] || {}, k = I().kw[e.id_kewajiban] || {}; return `<div class="row" style="gap:6px;align-items:flex-start">${pill(r.jenis_peraturan || '–', 'o', false)}<div><div class="t1">${esc(judulReg(r))}</div><div class="t2">${esc(k.pasal_butir || '–')}</div></div></div>`; } },
         { l: 'Uraian Kewajiban Hukum', r: e => { const k = I().kw[e.id_kewajiban] || {}; return `<div class="clamp2" style="max-width:360px">${esc(k.uraian_kewajiban || '–')}</div>${e.temuan && e.hasil !== 'Compliant' ? `<div class="small ${e.hasil === 'Non-Compliant' ? 't-r' : 'muted'} mt8">${ic('error', 'xs')} ${esc(e.temuan)}</div>` : ''}`; } },
@@ -1685,7 +1708,7 @@ function tabEval(evs, per) {
     <div class="card tint mt16"><div class="card-b row wrap" style="gap:14px"><div class="ic" style="width:40px;height:40px;border-radius:10px;background:#fff;color:var(--o-d);display:flex;align-items:center;justify-content:center">${ic('gavel')}</div><div class="sp" style="min-width:260px"><b>Mandatori Klausul SMKP Minerba Sub Elemen II.3 &amp; V.3</b><div class="small muted2">Evaluasi kepatuhan hukum dilaksanakan minimal setiap semester. Temuan Non-Compliant wajib ditindaklanjuti dengan RTP. Status RTP Closed tidak otomatis mengubah hasil evaluasi menjadi Compliant.</div></div>${is(R.CORP, R.SITE, R.MGT) ? `<button class="btn" data-act="go" data-sec="audit">${ic('history')} Log Validasi SHEC</button>` : ''}</div></div>`;
 }
 ACT['ev-hasil'] = t => { const st = tst('ev'); st.hasil = st.hasil === t.dataset.v ? 'ALL' : t.dataset.v; st.page = 1; renderSec('evaluasi'); };
-ACT['eval-buat-kw'] = t => go('evalform', { kw: t.dataset.id });
+ACT['eval-buat-kw'] = t => go('evalform', { kw: t.dataset.id, site: t.dataset.site, per: t.dataset.per });
 ACT['ev-buka'] = t => go('evalform', { id: t.dataset.id });
 function tabRtp(rtps) {
   const st = tst('rtp', { st: 'ALL', pic: 'ALL' });
@@ -1798,9 +1821,14 @@ HAL.evalform = (el, p) => {
   if (!e && !can.evalTambah()) { el.innerHTML = kosong('lock', 'Akses ditolak', 'Evaluasi dibuat oleh SHEC Site. SHEC Corporate meninjau dan memverifikasi dari menu Evaluasi &amp; RTP.'); return; }
   const edit = e ? can.evalEdit(e) : true;
   const kwAwal = e ? e.id_kewajiban : (p.kw && I().kw[p.kw] ? p.kw : '');
-  S.ui.ef = { kunci: p.id || 'baru', id: e ? e.id_evaluasi : '', files: [], hasil: e ? e.hasil : '', kw: kwAwal };
-  const site0 = e ? e.site : (kwAwal && I().kw[kwAwal] && I().kw[kwAwal].site_berlaku !== 'ALL' ? String(I().kw[kwAwal].site_berlaku).split(',')[0] : (S.ui.site !== 'ALL' ? S.ui.site : (siteList()[0] || {}).kode));
-  const periods = Array.from(new Set([periodeAktif(), periodeSebelum(periodeAktif(), 1)].concat(e ? [e.periode] : [])));
+  const site0 = e ? e.site : (p.site && siteList().some(x => x.kode === p.site) ? p.site : '');
+  if (!e && (!kwAwal || !site0)) {
+    el.innerHTML = kosong('assignment_late', 'Mulai evaluasi dari daftar kewajiban', 'Evaluasi dimulai dari daftar "Kewajiban Perlu Dievaluasi" di menu Evaluasi & RTP. Peraturan, site, dan periode tidak dipilih manual.', `<button class="btn p" data-act="go" data-sec="evaluasi">Ke daftar evaluasi</button>`);
+    setTimeout(() => { if (S.ui.sec === 'evalform') go('evaluasi'); }, 0);
+    return;
+  }
+  const per0 = e ? e.periode : (p.per && /^\d{4}-S[12]$/.test(p.per) ? p.per : periodeAktif());
+  S.ui.ef = { kunci: p.id || 'baru', id: e ? e.id_evaluasi : '', files: [], hasil: e ? e.hasil : '', kw: kwAwal, izin: e ? (e.id_izin || '') : '' };
   const rtpAda = e ? (I().rtpByEv[e.id_evaluasi] || []) : [];
   const ro = !edit;
   const segH = `<div class="seg" role="radiogroup" aria-label="Hasil evaluasi" id="efHasil">${HASIL.map(h => `<button type="button" role="radio" aria-checked="${S.ui.ef.hasil === h}" class="${S.ui.ef.hasil === h ? 'on ' : ''}${{ Compliant: 'g', 'Non-Compliant': 'r', Pending: 'b', 'N/A': 'n' }[h]}" data-act="ef-hasil" data-v="${h}" ${ro ? 'disabled' : ''}>${ic({ Compliant: 'check_circle', 'Non-Compliant': 'cancel', Pending: 'schedule', 'N/A': 'block' }[h], 's')} ${h}</button>`).join('')}</div>`;
@@ -1816,25 +1844,57 @@ HAL.evalform = (el, p) => {
     + `<form id="efForm" novalidate class="col" style="gap:16px">
     <div class="card"><div class="card-b frm">
       <div class="fsec"><span class="bar"></span>Informasi Evaluasi</div>
-      ${fld({ n: 'periode', l: 'Periode', t: 'select', opts: periods.map(x => [x, labelPeriode(x)]), v: e ? e.periode : periodeAktif(), req: true, ph: false, ro })}${fld({ n: 'site', l: 'Site', t: 'select', opts: siteList().map(s => [s.kode, s.nama]), v: site0, req: true, ro: ro || !!e, ch: 'ef-site' })}
+      <input type="hidden" name="periode" value="${esc(per0)}"><input type="hidden" name="site" value="${esc(site0)}">${fld({ n: 'periode_t', l: 'Periode', v: labelPeriode(per0), ro: true })}${fld({ n: 'site_t', l: 'Site', v: namaSite(site0), ro: true })}
       ${fld({ n: 'tanggal_evaluasi', l: 'Tanggal evaluasi', t: 'date', v: e ? e.tanggal_evaluasi : today(), req: true, ro })}${fld({ n: 'evaluator', l: 'Evaluator', v: e ? namaUser(e.evaluator_nrp) : S.me.nama + ' (NRP ' + S.me.nrp + ')', ro: true })}
       <div class="fsec"><span class="bar"></span>Kewajiban yang Dievaluasi</div>
-      <div class="full kwpick" data-f="id_kewajiban">${ro || e ? '' : `<label class="flbl" for="efKwQ">Cari kewajiban dari Register 1<span class="rq" style="color:var(--r)">*</span></label><div class="srch" style="position:relative;margin-top:6px">${ic('search', 's muted')}<input class="inp" id="efKwQ" data-in="ef-kwq" placeholder="Ketik nomor regulasi, pasal, atau uraian kewajiban…" autocomplete="off" style="padding-left:34px" aria-label="Cari kewajiban"></div><div class="kwlist hide" id="efKwList"></div>`}
-        <input type="hidden" name="id_kewajiban" value="${esc(S.ui.ef.kw)}"><div id="efKwCard" class="mt8">${kartuKw(S.ui.ef.kw)}</div><div class="ferr hide"></div></div>
+      <div class="full" data-f="id_kewajiban"><input type="hidden" name="id_kewajiban" value="${esc(S.ui.ef.kw)}"><div id="efKwCard">${kartuKw(S.ui.ef.kw)}</div><div class="ferr hide"></div></div>
       <div class="fsec"><span class="bar"></span>Pemeriksaan</div>
       ${fld({ n: 'metode_pemeriksaan', l: 'Metode pemeriksaan', t: 'select', opts: METODE, v: e ? e.metode_pemeriksaan : '', req: true, ro })}
       <div class="fld" data-f="hasil"><label>Hasil evaluasi<span class="rq">*</span></label>${segH}<input type="hidden" name="hasil" value="${esc(S.ui.ef.hasil)}"><div class="ferr hide"></div></div>
-      ${fld({ n: 'temuan', l: 'Temuan / justifikasi', t: 'textarea', rows: 3, v: e ? e.temuan : '', full: true, ro, max: 3000, ph: 'Uraikan temuan ketidaksesuaian, atau justifikasi untuk N/A…' })}
+      ${fld({ n: 'temuan', l: 'Temuan / alasan / justifikasi', t: 'textarea', rows: 3, v: e ? e.temuan : '', full: true, ro, max: 3000, ph: 'Non-Compliant: uraikan temuan — ini menjadi tindakan perbaikan (RTP). Pending: tulis alasan belum selesai. N/A: justifikasi.' })}
     </div></div>
-    <div class="card"><div class="card-h"><div class="ic">${ic('folder_open')}</div><div class="sp"><h3>Evidence / Bukti Objektif</h3><p>Wajib untuk hasil Compliant • disimpan di 03_Evidence_Evaluasi/${esc(labelPeriode(e ? e.periode : periodeAktif()))}</p></div><span class="pill r ${S.ui.ef.hasil === 'Compliant' ? '' : 'hide'}" id="efWajib">${ic('priority_high')} wajib</span></div>
+    <div class="card hide" id="efIzinCard" style="border-left:3px solid var(--o)"><div class="card-h"><div class="ic">${ic('verified')}</div><div class="sp"><h3>Pilih Izin / Lisensi dari Register 2</h3><p>Bukti pasal ini berupa izin/lisensi. Hanya dokumen milik ${esc(namaSite(site0))} yang ditampilkan • izin kedaluwarsa tidak dapat dipakai untuk Compliant</p></div><span class="pill r" id="efIzinWajib">${ic('priority_high')} wajib</span></div>
+      <div class="card-b col" style="gap:10px"><div id="efIzinList" class="col" style="gap:8px" role="radiogroup" aria-label="Izin/lisensi"></div><input type="hidden" name="id_izin" value="${esc(S.ui.ef.izin)}"><div class="ferr hide" id="efIzinErr"></div>${ro ? '' : `<button type="button" class="add-row" data-act="ef-izin-baru">${ic('add')} Daftarkan izin/lisensi baru</button>`}</div></div>
+    <div class="card" id="efBuktiCard"><div class="card-h"><div class="ic">${ic('folder_open')}</div><div class="sp"><h3>Evidence / Bukti Objektif</h3><p>Wajib untuk hasil Compliant • disimpan di 03_Evidence_Evaluasi/${esc(labelPeriode(per0))}</p></div><span class="pill r ${S.ui.ef.hasil === 'Compliant' ? '' : 'hide'}" id="efWajib">${ic('priority_high')} wajib</span></div>
       <div class="card-b col" style="gap:12px"><div id="efBukti"></div>${ro ? '' : `<div class="drop" data-act="ef-file" data-drop="1" data-ent="EVALQ" role="button" tabindex="0"><div class="dic">${ic('cloud_upload')}</div>Tarik &amp; letakkan evidence atau klik untuk memilih<small>PDF, JPG, PNG, Excel • Maks. ${esc(cfg('maks_upload_mb', 10))} MB • ${e ? 'langsung diunggah' : 'diunggah setelah evaluasi disimpan'}</small></div>`}</div></div>
-    <div class="card ${S.ui.ef.hasil === 'Non-Compliant' || rtpAda.length ? '' : 'hide'}" id="efRtpWrap" style="border-left:3px solid var(--r)"><div class="card-h"><div class="ic" style="background:var(--r-t);color:var(--r)">${ic('assignment')}</div><div class="sp"><h3>Rencana Tindak Lanjut (RTP)</h3><p>Wajib minimal satu RTP untuk hasil Non-Compliant • PIC tidak dapat menutup RTP sendiri</p></div>${e && is(R.CORP, R.SITE) && e.status_verifikasi !== 'Draft' ? `<button type="button" class="btn sm t" data-act="rtp-baru" data-ev="${esc(e.id_evaluasi)}">${ic('add')} Terbitkan RTP</button>` : ''}</div>
-      <div class="card-b col" style="gap:10px">${rtpAda.map(r => `<div class="file clk" data-act="buka-rtp" data-id="${esc(r.id_rtp)}" role="button" tabindex="0" style="cursor:pointer"><div class="fic" style="background:var(--b-t);color:var(--b)">${ic('assignment')}</div><div class="fn"><b>${esc(r.id_rtp)} — ${esc(r.tindakan_perbaikan)}</b><span>PIC ${esc(namaUser(r.pic_nrp))} • Due ${fmtTgl(r.due_date)}</span></div>${pill(stRtp(r))}</div>`).join('')}
-        ${ro ? '' : `<div id="efRtpRows" class="col" style="gap:8px"></div><button type="button" class="add-row" data-act="ef-rtp-tambah">${ic('add')} Tambah RTP</button>`}</div></div>
+    <div class="card hide" id="efTindak" style="border-left:3px solid var(--r)"><div class="card-h"><div class="ic" id="efTindakIc" style="background:var(--r-t);color:var(--r)">${ic('assignment')}</div><div class="sp"><h3 id="efTindakJ"></h3><p id="efTindakP"></p></div></div>
+      <div class="card-b frm"><div class="fld" data-f="tanggal_tindak_lanjut"><label for="f_tanggal_tindak_lanjut" id="efTglL"></label><input class="inp" id="f_tanggal_tindak_lanjut" type="date" name="tanggal_tindak_lanjut" value="${esc(e ? (e.tanggal_tindak_lanjut || (rtpAda[0] && rtpAda[0].due_date) || '') : '')}" min="${today()}" ${ro ? 'disabled' : ''}><div class="ferr hide"></div></div>
+        <div class="full col" style="gap:8px" id="efTindakInfo"></div>
+        ${rtpAda.length ? `<div class="full col" style="gap:8px">${rtpAda.map(r => `<div class="file clk" data-act="buka-rtp" data-id="${esc(r.id_rtp)}" role="button" tabindex="0" style="cursor:pointer"><div class="fic" style="background:var(--b-t);color:var(--b)">${ic('assignment')}</div><div class="fn"><b>${esc(r.id_rtp)} — ${esc(r.tindakan_perbaikan)}</b><span>PIC ${esc(namaUser(r.pic_nrp))} • Due ${fmtTgl(r.due_date)}</span></div>${pill(stRtp(r))}</div>`).join('')}</div>` : ''}</div></div>
     </form>
     <div class="sticky-f"><span class="lf">${ic('shield', 's')} Setiap perubahan tercatat di Audit_Log</span>${e && (is(R.CORP) || (can.evalEdit(e))) ? `<button class="btn do" data-act="ev-arsip" data-id="${esc(e.id_evaluasi)}">${ic('archive')} Arsipkan</button>` : ''}<button class="btn gh" data-act="back" data-fb="evaluasi">${ro ? 'Tutup' : 'Batal'}</button>${ro ? '' : `<button class="btn" data-act="ef-simpan" data-k="0">${ic('save')} Simpan Draft</button><button class="btn p" data-act="ef-simpan" data-k="1">${ic('send')} Kirim untuk Verifikasi</button>`}</div>`;
   PARTIAL.evalform();
-  if (!ro && S.ui.ef.hasil === 'Non-Compliant' && !rtpAda.length) ACT['ef-rtp-tambah']();
+  PARTIAL.efSekat();
+};
+/** Atur bagian form sesuai hasil & jenis kewajiban: bukti file / pilih izin, due date perbaikan, target Pending. */
+PARTIAL.efSekat = () => {
+  const ef = S.ui.ef, f = $('#efForm'); if (!ef || !f) return;
+  const kw = I().kw[ef.kw] || {}, h = ef.hasil, izinKw = kw.butuh_izin === 'Ya';
+  const tog = (id, tampil) => { const x = $(id); if (x) x.classList.toggle('hide', !tampil); };
+  tog('#efIzinCard', izinKw && h === 'Compliant');
+  tog('#efBuktiCard', !izinKw);
+  tog('#efWajib', h === 'Compliant' && !izinKw);
+  const nc = h === 'Non-Compliant', pd = h === 'Pending';
+  tog('#efTindak', nc || pd);
+  if (nc || pd) {
+    const set = (id, v) => { const x = $(id); if (x) x.innerHTML = v; };
+    set('#efTindakJ', nc ? 'Batas Waktu Perbaikan' : 'Target Tanggal Selesai');
+    set('#efTindakP', nc ? 'Wajib diisi — tindakan perbaikan otomatis masuk daftar RTP saat evaluasi dikirim' : 'Wajib diisi — setelah tanggal ini terlewati, kewajiban muncul lagi di daftar "perlu ditindaklanjuti"');
+    set('#efTglL', nc ? 'Batas waktu perbaikan (due date)<span class="rq">*</span>' : 'Target tanggal selesai<span class="rq">*</span>');
+    set('#efTindakInfo', nc
+      ? `<div class="note b">${ic('info')}<div><b>Otomatis:</b> tindakan perbaikan diambil dari kolom <b>Temuan</b> di atas • PIC = ${esc(S.me.nama)} (akun Anda) • RTP langsung muncul di tab RTP setelah dikirim. Penutupan RTP diverifikasi SHEC Corporate.</div></div>`
+      : `<div class="note b">${ic('info')}<div>Tulis <b>alasan</b> belum selesai di kolom Temuan di atas. Pending tetap dihitung belum patuh sampai ditindaklanjuti.</div></div>`);
+  }
+  const bk = $('#efBuktiHint'); if (bk) bk.remove();
+  PARTIAL.efIzin();
+};
+/** Daftar izin/lisensi Register 2 milik site ini untuk dipilih sebagai bukti. */
+PARTIAL.efIzin = () => {
+  const c = $('#efIzinList'), ef = S.ui.ef; if (!c || !ef) return;
+  const f = $('#efForm'), site = ($('[name=site]', f) || {}).value, kw = I().kw[ef.kw] || {};
+  const ro = ef.id && !can.evalEdit(I().ev[ef.id] || {});
+  const list = (S.data.reg2 || []).filter(r => aktif(r) && r.site === site).sort((a, b) => ((b.id_reg1 === kw.id_reg1) - (a.id_reg1 === kw.id_reg1)) || String(a.nama_dokumen).localeCompare(b.nama_dokumen));
+  c.innerHTML = list.length ? list.map(r => { const on = ef.izin === r.id_izin, st = stIzin(r); return `<button type="button" class="file izpick ${on ? 'on' : ''}" role="radio" aria-checked="${on}" data-act="ef-izin" data-id="${esc(r.id_izin)}" ${ro ? 'disabled' : ''}><div class="fic">${ic(on ? 'radio_button_checked' : 'radio_button_unchecked')}</div><div class="fn"><b>${esc(r.nama_dokumen)}</b><span>${esc(r.nomor_dokumen || '–')} • ${r.tanggal_kedaluwarsa ? 'berlaku s.d. ' + fmtTgl(r.tanggal_kedaluwarsa) : 'tanpa masa berlaku'}</span></div>${pill(st)}</button>`; }).join('') : '<div class="muted small">Belum ada izin/lisensi terdaftar untuk site ini. Daftarkan izin barunya dengan tombol di bawah.</div>';
 };
 PARTIAL.evalform = () => {
   const b = $('#efBukti'); if (!b || !S.ui.ef) return;
@@ -1843,9 +1903,14 @@ PARTIAL.evalform = () => {
   b.innerHTML = daftarBerkas(ada, { hapus: edit, kosong: false }) + (S.ui.ef.files.length ? `<div class="files mt8">${S.ui.ef.files.map((f, i) => `<div class="file"><div class="fic">${ic('schedule')}</div><div class="fn"><b>${esc(f.name)}</b><span>${ukuran(f.size)} • antre, diunggah saat disimpan</span></div><button type="button" class="btn gh ic sm" data-act="ef-file-hapus" data-i="${i}" aria-label="Hapus">${ic('close')}</button></div>`).join('')}</div>` : '') + (!ada.length && !S.ui.ef.files.length ? '<div class="muted small">Belum ada evidence.</div>' : '');
 };
 function kartuKw(id) {
-  const k = I().kw[id]; if (!k) return '<div class="muted small">Belum ada kewajiban dipilih.</div>';
+  const k = I().kw[id]; if (!k) return '<div class="muted small">Kewajiban tidak ditemukan.</div>';
   const r = I().reg1[k.id_reg1] || {};
-  return `<div class="card flat" style="background:var(--sf2)"><div class="card-b"><div class="row wrap mb8">${pill(r.jenis_peraturan || '–', 'o', false)}<b>${esc(judulReg(r))}</b><span class="muted small">• ${esc(k.pasal_butir || '–')}</span></div><div class="small">${esc(k.uraian_kewajiban)}</div><div class="xsmall muted mt8">PIC: ${esc(namaDept(k.departemen_penanggung_jawab))} • Periodisitas: ${esc(k.periodisitas || '–')} • ${esc(k.id_kewajiban)}</div></div></div>`;
+  return `<div class="kwcard"><div class="kwc-grid">
+    <div><div class="kwc-l">Nama dokumen</div><div class="mb8">${pill(r.jenis_peraturan || '–', 'o', false)}</div><b>${esc(judulReg(r))}</b></div>
+    <div><div class="kwc-l">Pasal / butir / klausul</div><b>${esc(k.pasal_butir || '–')}</b></div>
+    <div><div class="kwc-l">Bukti yang diwajibkan</div><b>${esc(k.bukti_wajib || '–')}</b>${k.butuh_izin === 'Ya' ? `<div class="mt8">${pill('Berupa izin / lisensi', 'b', false)}</div>` : ''}</div></div>
+    <div class="kwc-u"><div class="kwc-l">Uraian kewajiban</div><div>${esc(k.uraian_kewajiban)}</div></div>
+    <div class="xsmall muted mt8">Periodisitas: ${esc(k.periodisitas || '–')} • ${esc(k.id_kewajiban)}</div></div>`;
 }
 function antreBerkasEval(files) {
   const ef = S.ui.ef; if (!ef) return;
@@ -1853,33 +1918,20 @@ function antreBerkasEval(files) {
   files.forEach(f => { const c = cekBerkas(f); if (c.err) toast(c.err, 'error'); else ef.files.push(f); });
   PARTIAL.evalform();
 }
-IN['ef-kwq'] = t => {
-  const q = t.value.trim().toLowerCase(), list = $('#efKwList'), site = ($('#f_site') || {}).value;
-  if (q.length < 2) { list.classList.add('hide'); return; }
-  const kws = (S.data.kewajiban || []).filter(k => { if (!aktif(k)) return false; const r = I().reg1[k.id_reg1]; if (!r || !aktif(r) || r.status_berlaku === 'Dicabut') return false; const sOk = !k.site_berlaku || k.site_berlaku === 'ALL' || String(k.site_berlaku).split(',').includes(site); const rOk = !r.site_berlaku || r.site_berlaku === 'ALL' || String(r.site_berlaku).split(',').includes(site); return sOk && rOk && cari(q, k.pasal_butir, k.uraian_kewajiban, judulReg(r), r.judul, k.id_kewajiban); }).slice(0, 30);
-  list.innerHTML = kws.length ? kws.map(k => { const r = I().reg1[k.id_reg1]; return `<button type="button" data-act="ef-kw" data-id="${esc(k.id_kewajiban)}"><b>${esc(judulReg(r))} — ${esc(k.pasal_butir || '')}</b><span>${esc(k.uraian_kewajiban)}</span></button>`; }).join('') : '<div class="empty small">Tidak ada kewajiban yang cocok untuk site ini.</div>';
-  list.classList.remove('hide');
-};
-CH['ef-site'] = () => { const q = $('#efKwQ'); if (q && q.value) IN['ef-kwq'](q); };
 Object.assign(ACT, {
-  'ef-kw': t => { S.ui.ef.kw = t.dataset.id; $('[name=id_kewajiban]', $('#efForm')).value = t.dataset.id; $('#efKwCard').innerHTML = kartuKw(t.dataset.id); $('#efKwList').classList.add('hide'); $('#efKwQ').value = ''; setErr($('#efForm'), 'id_kewajiban', null); },
   'ef-hasil': t => {
     const v = t.dataset.v; S.ui.ef.hasil = v; $('[name=hasil]', $('#efForm')).value = v;
     $$('#efHasil button').forEach(b => { const on = b.dataset.v === v; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
-    $('#efWajib').classList.toggle('hide', v !== 'Compliant');
-    const w = $('#efRtpWrap'); const ada = w && w.querySelector('.file');
-    if (w) w.classList.toggle('hide', v !== 'Non-Compliant' && !ada);
-    if (v === 'Non-Compliant' && $('#efRtpRows') && !$('#efRtpRows').children.length && !ada) ACT['ef-rtp-tambah']();
+    PARTIAL.efSekat();
     setErr($('#efForm'), 'hasil', null);
   },
   'ef-file': () => pilihBerkas(antreBerkasEval),
   'ef-file-hapus': t => { S.ui.ef.files.splice(Number(t.dataset.i), 1); PARTIAL.evalform(); },
-  'ef-rtp-tambah': () => {
-    const c = $('#efRtpRows'); if (!c) return;
-    const site = ($('#f_site') || {}).value;
-    c.insertAdjacentHTML('beforeend', `<div class="rep" data-rtp="1"><input class="inp" name="r_tindakan" placeholder="Tindakan perbaikan" maxlength="2000" aria-label="Tindakan perbaikan"><select class="inp" name="r_pic" aria-label="PIC">${opsi([['', 'Pilih PIC']].concat(usersSite(site).map(u => [u.nrp, `${u.nama} (${ROLE_LABEL[u.role] || u.role})`])), '')}</select><input class="inp" type="date" name="r_due" value="${addDays(today(), 14)}" aria-label="Due date"><button type="button" class="btn gh ic" data-act="kw-hapus2" aria-label="Hapus RTP">${ic('delete')}</button></div>`);
+  'ef-izin': t => { S.ui.ef.izin = S.ui.ef.izin === t.dataset.id ? '' : t.dataset.id; const h = $('[name=id_izin]', $('#efForm')); if (h) h.value = S.ui.ef.izin; const er = $('#efIzinErr'); if (er) er.classList.add('hide'); PARTIAL.efIzin(); },
+  'ef-izin-baru': () => {
+    const ef = S.ui.ef, kw = I().kw[ef.kw] || {}, site = ($('[name=site]', $('#efForm')) || {}).value;
+    formReg2(null, { site, id_reg1: kw.id_reg1, nama_dokumen: kw.bukti_wajib || '', pic_nrp: S.me.nrp, dariEval: true });
   },
-  'kw-hapus2': t => { const r = t.closest('[data-rtp]'); if (r) r.remove(); },
   'ef-simpan': t => simpanEval(t.dataset.k === '1', t),
   'ev-verif': async t => {
     const id = t.dataset.id;
@@ -1904,28 +1956,35 @@ Object.assign(ACT, {
 });
 async function simpanEval(kirimV, btn) {
   const f = $('#efForm'), ef = S.ui.ef;
-  const rtpBaru = $$('[data-rtp]', f).map(r => ({ tindakan_perbaikan: $('[name=r_tindakan]', r).value.trim(), pic_nrp: $('[name=r_pic]', r).value, due_date: $('[name=r_due]', r).value })).filter(x => x.tindakan_perbaikan || x.pic_nrp);
-  const e = ef.id ? I().ev[ef.id] : null;
+  const e = ef.id ? I().ev[ef.id] : null, kw = I().kw[ef.kw] || {}, izinKw = kw.butuh_izin === 'Ya';
   const nBukti = (ef.id ? lampiran('EVAL', ef.id).length : 0) + ef.files.length;
-  const nRtp = (ef.id ? (I().rtpByEv[ef.id] || []).length : 0) + rtpBaru.length;
-  const ok = validasi(f, x => ({
-    id_kewajiban: !x.id_kewajiban ? 'Pilih kewajiban yang dievaluasi.' : '',
-    hasil: !x.hasil ? 'Pilih hasil evaluasi.' : '',
-    temuan: kirimV && x.hasil === 'Non-Compliant' && !x.temuan ? 'Uraikan temuan untuk hasil Non-Compliant.' : ''
-  }));
+  const izinPilih = izinKw && ef.izin ? (I().reg2[ef.izin] || null) : null;
+  const ok = validasi(f, x => {
+    const tdk = x.hasil === 'Non-Compliant' || x.hasil === 'Pending';
+    return {
+      id_kewajiban: !x.id_kewajiban ? 'Kewajiban tidak ditemukan. Mulai evaluasi dari daftar kewajiban.' : '',
+      hasil: !x.hasil ? 'Pilih hasil evaluasi.' : '',
+      temuan: kirimV && tdk && !x.temuan ? (x.hasil === 'Pending' ? 'Tuliskan alasan evaluasi belum dapat diselesaikan.' : 'Uraikan temuan — menjadi tindakan perbaikan (RTP).') : '',
+      tanggal_tindak_lanjut: tdk && x.tanggal_tindak_lanjut && x.tanggal_tindak_lanjut < today() ? 'Tanggal tidak boleh sebelum hari ini.' : (kirimV && tdk && !x.tanggal_tindak_lanjut ? (x.hasil === 'Pending' ? 'Isi target tanggal selesai.' : 'Isi batas waktu perbaikan (due date).') : '')
+    };
+  });
   if (!ok) return;
-  if (rtpBaru.some(x => !x.tindakan_perbaikan || !x.pic_nrp || !x.due_date)) { toast('Lengkapi tindakan, PIC, dan due date pada setiap baris RTP.', 'warning'); return; }
-  if (kirimV && bacaForm(f).hasil === 'Compliant' && !nBukti) { toast('Evidence wajib dilampirkan untuk hasil Compliant.', 'warning'); return; }
-  if (kirimV && bacaForm(f).hasil === 'Non-Compliant' && !nRtp) { toast('Hasil Non-Compliant wajib memiliki minimal satu RTP.', 'warning'); return; }
   const v = bacaForm(f);
+  if (kirimV && v.hasil === 'Compliant') {
+    if (izinKw) {
+      if (!izinPilih) { const er = $('#efIzinErr'); if (er) { er.innerHTML = ic('error') + ' Pilih izin/lisensi dari Register 2 atau daftarkan yang baru.'; er.classList.remove('hide'); } toast('Pilih izin/lisensi sebagai bukti.', 'warning'); return; }
+      if (stIzin(izinPilih) === 'Kedaluwarsa') { toast('Izin/lisensi yang dipilih sudah kedaluwarsa. Perpanjang dulu di Register 2.', 'warning'); return; }
+    } else if (!nBukti) { toast('Evidence wajib dilampirkan untuk hasil Compliant.', 'warning'); return; }
+  }
   v.site = v.site || (e ? e.site : '');
+  v.id_izin = izinKw && v.hasil === 'Compliant' ? (ef.izin || '') : '';
+  if (v.hasil !== 'Non-Compliant' && v.hasil !== 'Pending') v.tanggal_tindak_lanjut = '';
   const duaLangkah = kirimV && ef.files.length > 0;
   busy(btn, true, kirimV ? 'Mengirim…' : 'Menyimpan…');
   try {
-    let res = await api('eval.simpan', Object.assign({}, v, { id_evaluasi: ef.id, kirim: kirimV && !duaLangkah, rtp: rtpBaru }));
+    let res = await api('eval.simpan', Object.assign({}, v, { id_evaluasi: ef.id, kirim: kirimV && !duaLangkah }));
     const ev = res.data.evaluasi; ef.id = ev.id_evaluasi; ef.kunci = ev.id_evaluasi;
     upsert('evaluasi', 'id_evaluasi', ev); (res.data.rtp || []).forEach(r => upsert('rtp', 'id_rtp', r)); S.idx = null;
-    $$('[data-rtp]', f).forEach(r => r.remove());
     if (ef.files.length) {
       busy(btn, false); busy(btn, true, 'Mengunggah evidence…');
       const antre = ef.files.splice(0); PARTIAL.evalform();
@@ -1935,8 +1994,9 @@ async function simpanEval(kirimV, btn) {
         upsert('lampiran', 'id_lampiran', r2.data.lampiran); S.idx = null; PARTIAL.evalform();
       }
     }
-    if (duaLangkah) res = await api('eval.simpan', Object.assign({}, v, { id_evaluasi: ev.id_evaluasi, kirim: true, rtp: [] }));
+    if (duaLangkah) res = await api('eval.simpan', Object.assign({}, v, { id_evaluasi: ev.id_evaluasi, kirim: true }));
     if (res.data && res.data.evaluasi) upsert('evaluasi', 'id_evaluasi', res.data.evaluasi);
+    ((res.data && res.data.rtp) || []).forEach(r => upsert('rtp', 'id_rtp', r));
     S.idx = null; toast(res.message, 'success'); jadwalSync(200);
     go('evaluasi');
   } catch (err) {
