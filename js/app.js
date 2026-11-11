@@ -162,7 +162,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.0.3';
+const APP_UI_VERSI = '2.0.4';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -1100,7 +1100,7 @@ Object.assign(ACT, {
     const lampA = lampiran('ANT', a.id_antrean), bolehUnggahA = a.status === 'Menunggu' && a.pengusul === S.me.nrp;
     modal({ title: a.judul, sub: `${a.id_antrean} • ${a.sumber_portal}`, icon: 'policy', size: 'lg', body: `<div class="row wrap mb12">${pill(a.jenis_temuan)} ${pill(a.status)}</div><dl class="dl"><div><dt>Bentuk</dt><dd>${esc(a.bentuk || '–')}</dd></div><div><dt>Nomor / Tahun</dt><dd>${esc(a.nomor)} / ${esc(a.tahun)}</dd></div><div><dt>Diusulkan</dt><dd>${fmtWkt(a.tanggal_ditemukan)}</dd></div><div><dt>Diverifikasi</dt><dd>${a.diverifikasi_oleh ? esc(namaUser(a.diverifikasi_oleh)) + ' • ' + fmtWkt(a.tanggal_verifikasi) : '–'}</dd></div><div class="full"><dt>Catatan verifikasi</dt><dd>${esc(a.catatan_verifikasi || '–')}</dd></div>${a.id_reg1 ? `<div class="full"><dt>Register 1</dt><dd><button class="lnk" data-act="go" data-sec="reg1d" data-id="${esc(a.id_reg1)}">${esc(a.id_reg1)} ${ic('arrow_forward', 's')}</button></dd></div>` : ''}</dl>
       <div class="fsec"><span class="bar"></span>Naskah PDF &amp; Saran Elemen SMKP</div>
-      <div class="col" style="gap:10px">${daftarBerkas(lampA, { hapus: a.pengusul === S.me.nrp, teksKosong: 'Belum ada naskah PDF terlampir.' })}${bolehUnggahA ? zonaUnggah('ANT', a.id_antrean, a.site_pengusul, 'Tarik & letakkan naskah PDF di sini atau klik untuk memilih') : ''}${a.elemen_smkp_disarankan ? smkpBadges(a.elemen_smkp_disarankan, 'o') : ''}</div>`, foot: '<button class="btn p" data-act="mclose">Tutup</button>' });
+      <div class="col" style="gap:10px">${daftarBerkas(lampA, { hapus: a.pengusul === S.me.nrp, teksKosong: 'Belum ada naskah PDF terlampir.' })}${bolehUnggahA ? zonaUnggah('ANT', a.id_antrean, a.site_pengusul, 'Tarik & letakkan naskah PDF di sini atau klik untuk memilih') : ''}</div>`, foot: '<button class="btn p" data-act="mclose">Tutup</button>' });
   },
   'ant-dup': async () => {
     const ids = Array.from(S.ui.sel.ant || []); if (!ids.length) return;
@@ -1193,7 +1193,7 @@ function lampiranAntreanCard(a) {
   const bolehUnggah = a.status === 'Menunggu' && (is(R.CORP) || a.pengusul === S.me.nrp);
   return `<div class="card"><div class="card-h"><div class="ic">${ic('picture_as_pdf')}</div><div class="sp"><h3>Berkas Naskah (PDF) &amp; Saran Elemen SMKP</h3><p>Unggah naskah resmi PDF untuk mendapat saran elemen SMKP otomatis (informasional — bukan AI/LLM, pencocokan kata kunci lokal)</p></div></div>
     <div class="card-b col" style="gap:12px">${daftarBerkas(lamp, { hapus: is(R.CORP) || a.pengusul === S.me.nrp, teksKosong: 'Belum ada naskah PDF terlampir.' })}${bolehUnggah ? zonaUnggah('ANT', a.id_antrean, a.site_pengusul, 'Tarik & letakkan naskah PDF di sini atau klik untuk memilih') : ''}
-    ${a.elemen_smkp_disarankan ? `<div><div class="xsmall b6 muted mb4">SARAN ELEMEN SMKP (OTOMATIS, DARI PDF TERLAMPIR)</div>${smkpBadges(a.elemen_smkp_disarankan, 'o')}</div>` : (lamp.some(l => l.mime === 'application/pdf') ? `<div class="note b">${ic('info')}<div>Tidak ada saran elemen SMKP yang cocok dari naskah PDF ini, atau ekstraksi teks belum berhasil. SHEC Corporate tetap dapat memilih elemen SMKP secara manual saat menyetujui.</div></div>` : '')}</div></div>`;
+    </div></div>`;
 }
 function barisKw(k, i) {
   k = k || {};
@@ -1221,8 +1221,6 @@ function formVerif(a, lama) {
       ${fld({ n: 'id_reg1_terkait', l: 'Regulasi terkait (lama)', t: 'select', opts: reg1Opts, v: a.id_reg1_terkait, ph: '— Tidak ada —' })}${fld({ n: 'statusLama', l: 'Status regulasi lama', t: 'select', opts: [['', 'Tidak berubah'], ['Diubah', 'Tandai "Diubah (Amended)"'], ['Dicabut', 'Tandai "Dicabut"']], v: statusLama, ph: false })}
       ${fld({ n: 'status_berlaku', l: 'Status regulasi baru', t: 'select', opts: ['Berlaku', 'Diubah', 'Dicabut'], v: 'Berlaku', ph: false })}
       <div class="fsec"><span class="bar"></span>4b. Elemen SMKP (Taksonomi 51 Sub-Elemen) <span class="muted" style="font-weight:500;text-transform:none;letter-spacing:0">(opsional)</span></div>
-      ${a.elemen_smkp_disarankan ? `<div class="full note o">${ic('auto_awesome')}<div><b>Saran otomatis dari PDF terlampir</b> (sudah dicentang di bawah — hanya informasional, periksa &amp; sesuaikan sebelum menyetujui): ${smkpBadges(a.elemen_smkp_disarankan)}</div></div>` : `<div class="full help" style="margin:0 0 4px">Belum ada saran otomatis (PDF belum dilampirkan / tidak ada kecocokan kata kunci). Pilih manual bila relevan — boleh dikosongkan.</div>`}
-      <div class="full">${fld({ n: 'elemen_smkp', l: 'Elemen SMKP terkonfirmasi', t: 'checks', v: a.elemen_smkp_disarankan, opts: smkpOpts() })}</div>
       <div class="fsec"><span class="bar"></span>5. Kewajiban Pasal Awal <span class="muted" style="font-weight:500;text-transform:none;letter-spacing:0">(opsional)</span></div>
       <div class="full col" style="gap:8px" id="kwRows"></div><div class="full"><button type="button" class="add-row" data-act="kw-tambah">${ic('add')} Tambah Kewajiban</button></div>
       ${fld({ n: 'catatan', l: 'Catatan telaah hukum & rekomendasi', t: 'textarea', rows: 3, full: true, max: 2000, ph: 'Contoh: Wajib sosialisasi ke seluruh PJO…' })}
@@ -1241,7 +1239,7 @@ Object.assign(ACT, {
     if (!validasi(f, x => ({ tahun: /^\d{4}$/.test(x.tahun) ? '' : 'Tahun harus 4 digit.', site_berlaku: x.cakupan === 'SPESIFIK' && !x.site_berlaku ? 'Pilih minimal satu site.' : '' }))) return;
     const v = bacaForm(f);
     if (!await konfirmasi({ title: 'Terbitkan ke Register 1?', msg: 'Regulasi menjadi master aktif dan dapat dievaluasi oleh site terkait.', ok: 'Setujui & Terbitkan', icon: 'verified' })) return;
-    const reg1 = { jenis_peraturan: v.jenis_peraturan, bentuk_peraturan: v.bentuk_peraturan, nomor: v.nomor, tahun: v.tahun, judul: v.judul, tautan_sumber_resmi: v.tautan_sumber_resmi, sumber_resmi: a.sumber_portal, status_berlaku: v.status_berlaku, relevansi_kegiatan: v.relevansi_kegiatan, site_berlaku: v.cakupan === 'ALL' ? 'ALL' : v.site_berlaku, pic_departemen: v.pic_departemen, keterkaitan_smkp: v.keterkaitan_smkp, id_reg1_terkait: v.id_reg1_terkait, elemen_smkp: v.elemen_smkp };
+    const reg1 = { jenis_peraturan: v.jenis_peraturan, bentuk_peraturan: v.bentuk_peraturan, nomor: v.nomor, tahun: v.tahun, judul: v.judul, tautan_sumber_resmi: v.tautan_sumber_resmi, sumber_resmi: a.sumber_portal, status_berlaku: v.status_berlaku, relevansi_kegiatan: v.relevansi_kegiatan, site_berlaku: v.cakupan === 'ALL' ? 'ALL' : v.site_berlaku, pic_departemen: v.pic_departemen, keterkaitan_smkp: v.keterkaitan_smkp, id_reg1_terkait: v.id_reg1_terkait };
     try {
       const res = await kirim('antrean.setujui', { id_antrean: a.id_antrean, reg1, kewajiban: bacaKw(f), idLama: v.id_reg1_terkait, statusLama: v.statusLama, catatan: v.catatan }, { btn: t, txt: 'Menerbitkan…', diam: true });
       upsert('antrean', 'id_antrean', { id_antrean: a.id_antrean, status: 'Disetujui', id_reg1: res.data.id_reg1, diverifikasi_oleh: S.me.nrp });
@@ -1294,13 +1292,12 @@ HAL.reg1 = el => {
     <div class="card"><div class="fbar"><div class="srch">${ic('search')}<input class="inp" id="r1Q" data-in="q" data-t="reg1" value="${esc(st.q)}" placeholder="Cari nomor, judul, kode register…" aria-label="Cari regulasi"></div>
       <select class="inp" data-ch="flt" data-t="reg1" data-k="jenis" aria-label="Kategori">${opsi([['ALL', 'Semua kategori']].concat(JENIS), st.jenis)}</select>
       <select class="inp" data-ch="flt" data-t="reg1" data-k="status" aria-label="Status">${opsi([['ALL', 'Semua status'], 'Berlaku', 'Diubah', 'Dicabut'], st.status)}</select>
-      <select class="inp" data-ch="flt" data-t="reg1" data-k="smkp" aria-label="Elemen SMKP">${opsi([['ALL', 'Semua elemen SMKP']].concat(smkpOpts()), st.smkp)}</select>
       ${st.q || st.jenis !== 'ALL' || st.status !== 'ALL' || st.dept !== 'ALL' || st.smkp !== 'ALL' || st.arsip ? `<button class="btn gh sm" data-act="reset-reg1">${ic('filter_alt_off')} Reset Filter</button>` : ''}</div>
       <div class="factive">${['ALL'].concat(JENIS).map(j => { const n = j === 'ALL' ? base.length : base.filter(r => r.jenis_peraturan === j).length; return n || j === 'ALL' ? `<button class="chip ${st.jenis === j ? 'on' : ''}" data-act="r1-jenis" data-v="${j}">${j === 'ALL' ? 'Semua' : esc(j)} <b>${n}</b></button>` : ''; }).join('')}</div>
       ${tabel('reg1', { key: 'id_reg1', rows, rowAct: 'r1-buka', unit: 'peraturan', empty: kosong('menu_book', st.arsip ? 'Tidak ada arsip' : 'Belum ada regulasi', 'Regulasi masuk melalui verifikasi Antrean atau tambah manual oleh SHEC Corporate.'), rowCls: r => aktif(r) ? '' : 'tmp', cols: [
         { l: 'Kode Register', r: r => `<div class="idc">${esc(r.id_reg1)}</div><div class="t2 nowrap">${ic('verified', 'xs t-g')} Verif: ${fmtTgl(r.tanggal_verifikasi)}</div>` },
         { l: 'Nomor & Tahun', r: r => `<div class="t1">${esc(judulReg(r))}</div><div class="t2">${esc(r.sumber_resmi || '–')}</div>` },
-        { l: 'Judul & Kategori', r: r => `<div class="clamp2" style="max-width:380px">${esc(r.judul)}</div><div class="row wrap mt8" style="gap:4px">${pill(r.jenis_peraturan, 'o', false)}${String(r.keterkaitan_smkp || '').split(',').filter(Boolean).map(x => pill('SMKP ' + x, 'b', false)).join('')}${String(r.elemen_smkp || '').split(',').filter(Boolean).map(k => pill(k, 'n', false)).join('')}</div>` },
+        { l: 'Judul & Kategori', r: r => `<div class="clamp2" style="max-width:380px">${esc(r.judul)}</div><div class="row wrap mt8" style="gap:4px">${pill(r.jenis_peraturan, 'o', false)}${String(r.keterkaitan_smkp || '').split(',').filter(Boolean).map(x => pill('SMKP ' + x, 'b', false)).join('')}</div>` },
         { l: 'Kewajiban Pasal', r: r => `<span class="pill b">${ic('rule')} ${kwN(r.id_reg1)} klausul</span>` },
         { l: 'Berlaku untuk', r: r => `<div class="small">${esc(namaSite(r.site_berlaku))}</div>` },
         { l: 'Status', r: r => aktif(r) ? pill(r.status_berlaku) : pill('Arsip', 'n') }
@@ -1357,7 +1354,7 @@ HAL.reg1d = (el, p) => {
       <div><dt>Tanggal penetapan</dt><dd>${fmtTgl(r.tanggal_penetapan)}</dd></div><div><dt>Sumber resmi</dt><dd>${esc(r.sumber_resmi || '–')}</dd></div><div><dt>Keterkaitan SMKP</dt><dd>${esc(r.keterkaitan_smkp || '–')}</dd></div>
       <div><dt>Site berlaku</dt><dd>${esc(namaSite(r.site_berlaku))}</dd></div><div><dt>Diverifikasi</dt><dd>${esc(namaUser(r.diverifikasi_oleh))}<div class="t2 small muted">${fmtTgl(r.tanggal_verifikasi)}${r.id_antrean_asal ? ' • dari ' + esc(r.id_antrean_asal) : ''}</div></dd></div>
       <div class="full"><dt>Relevansi terhadap kegiatan HMSI</dt><dd>${esc(r.relevansi_kegiatan || '–')}</dd></div>
-      <div class="full"><dt>Elemen SMKP terkonfirmasi (FR-12)</dt><dd>${r.elemen_smkp ? smkpBadges(r.elemen_smkp) : '<span class="muted">–</span>'}</dd></div></dl></div></div>
+      </dl></div></div>
     <div class="card"><div class="card-h"><div class="ic">${ic('donut_large')}</div><div><h3>Status Pemenuhan</h3><p>${esc(labelPeriode(per))} • evaluasi terverifikasi</p></div></div><div class="card-b">
       <div class="kpi-v">${fpct(pct(h('Compliant'), evPer.length - h('N/A')))}<small>patuh</small></div><div class="mt8">${segBar(h('Compliant'), h('Non-Compliant'), h('Pending'))}</div>
       <div class="lgd mt12">${[['Compliant', WARNA.g], ['Non-Compliant', WARNA.r], ['Pending', WARNA.b], ['N/A', WARNA.n]].map(([l, c]) => `<div class="lgd-i"><i style="background:${c}"></i><span>${l}</span><b>${h(l)}</b></div>`).join('')}</div>
@@ -1394,7 +1391,6 @@ function formReg1(r) {
       ${fld({ n: 'status_berlaku', l: 'Status berlaku', t: 'select', opts: ['Berlaku', 'Diubah', 'Dicabut'], v: r.status_berlaku, ph: false })}${fld({ n: 'id_reg1_terkait', l: 'Regulasi terkait / pengubah', t: 'select', opts: (S.data.reg1 || []).filter(x => aktif(x) && x.id_reg1 !== r.id_reg1).map(x => [x.id_reg1, x.id_reg1 + ' — ' + judulReg(x)]), v: r.id_reg1_terkait, ph: '— Tidak ada —' })}
       ${fld({ n: 'relevansi_kegiatan', l: 'Relevansi terhadap kegiatan HMSI', t: 'textarea', rows: 3, v: r.relevansi_kegiatan, req: true, full: true, max: 2000 })}
       <div class="full">${fld({ n: 'keterkaitan_smkp', l: 'Keterkaitan SMKP Minerba', t: 'checks', v: r.keterkaitan_smkp, opts: [['II.3', 'Elemen II.3'], ['V.3', 'Elemen V.3']] })}</div>
-      <div class="full">${fld({ n: 'elemen_smkp', l: 'Elemen SMKP terkonfirmasi (taksonomi 51 sub-elemen, opsional)', t: 'checks', v: r.elemen_smkp, opts: smkpOpts() })}</div>
       ${baru ? `<div class="fsec"><span class="bar"></span>Kewajiban Pasal Awal</div><div class="full col" style="gap:8px" id="kwRows">${barisKw({}, 0)}</div><div class="full"><button type="button" class="add-row" data-act="kw-tambah">${ic('add')} Tambah Kewajiban</button></div>` : ''}
       <div class="fsec"><span class="bar"></span>Distribusi ke Site</div>
       ${fld({ n: 'cakupan', l: 'Regulasi dan pasal di atas berlaku untuk', t: 'select', opts: [['ALL', 'Semua site'], ['SPESIFIK', 'Site tertentu (pilih di bawah)']], v: spes ? 'SPESIFIK' : 'ALL', ph: false, ch: 'cakupan', full: true })}
@@ -1408,6 +1404,7 @@ Object.assign(ACT, {
     const f = $('#fReg1');
     if (!validasi(f, x => ({ tahun: /^\d{4}$/.test(x.tahun) ? '' : 'Tahun harus 4 digit.', site_berlaku: x.cakupan === 'SPESIFIK' && !x.site_berlaku ? 'Pilih minimal satu site.' : '' }))) return;
     const v = bacaForm(f); v.site_berlaku = v.cakupan === 'ALL' ? 'ALL' : v.site_berlaku; v.id_reg1 = t.dataset.id; v.kewajiban = $('#kwRows') ? bacaKw(f) : [];
+    if (v.id_reg1) { const lm = I().reg1[v.id_reg1] || {}; v.elemen_smkp = lm.elemen_smkp || ''; v.pic_departemen = lm.pic_departemen || ''; }
     if (!v.id_reg1 && !v.kewajiban.length) { toast('Isi minimal satu pasal kewajiban agar peraturan dapat dievaluasi site.', 'error'); return; }
     try {
       const res = await kirim('reg1.simpan', v, { btn: t, txt: 'Menyimpan…' });
@@ -1452,6 +1449,7 @@ Object.assign(ACT, {
     if (t.dataset.id) {
       if (!validasi(f)) return;
       const v = bacaForm(f); v.site_berlaku = v.site_berlaku || 'ALL'; v.id_reg1 = t.dataset.reg; v.id_kewajiban = t.dataset.id;
+      v.departemen_penanggung_jawab = (I().kw[t.dataset.id] || {}).departemen_penanggung_jawab || '';
       tutupModal(); kirim('kewajiban.simpan', v, { apply: () => upsert('kewajiban', 'id_kewajiban', v) }).catch(() => { }); return;
     }
     const list = bacaKw(f);
@@ -2039,7 +2037,7 @@ Object.assign(ACT, {
 /* ───────────── HALAMAN: PENGATURAN (SHEC Corporate) ───────────── */
 HAL.pengaturan = el => {
   const tab = S.ui.tab.pengaturan || 'user';
-  const TABS = [['user', 'Pengguna & Hak Akses', 'manage_accounts'], ['site', 'Site Operasional', 'apartment'], ['dept', 'Departemen', 'domain'], ['portal', 'Sumber Portal Resmi', 'public'], ['kata', 'Kata Kunci', 'sell'], ['smkp', 'Elemen SMKP', 'fact_check'], ['param', 'Parameter Sistem', 'tune']];
+  const TABS = [['user', 'Pengguna & Hak Akses', 'manage_accounts'], ['site', 'Site Operasional', 'apartment'], ['dept', 'Departemen', 'domain'], ['portal', 'Sumber Portal Resmi', 'public'], ['kata', 'Kata Kunci', 'sell'], ['param', 'Parameter Sistem', 'tune']];
   const isi = { user: setUser, site: () => setMaster('Sites'), dept: () => setMaster('Departemen'), portal: setPortal, kata: setKata, smkp: setSmkp, param: setParam }[tab]();
   el.innerHTML = hdr({ crumbs: [['Pengaturan Sistem', 'pengaturan'], [TABS.find(x => x[0] === tab)[1]]], title: { user: 'Manajemen Pengguna &amp; Otorisasi Akses (RBAC)', site: 'Master Site Operasional', dept: 'Master Departemen', portal: 'Sumber Portal Resmi &amp; Crawler', kata: 'Kata Kunci Pencarian', smkp: 'Taksonomi Elemen SMKP Minerba', param: 'Parameter Sistem' }[tab], sub: { user: 'Kelola akun pengguna, peran (Corporate, Site, PIC, PJO, Manajemen), kredensial PIN, serta mitigasi akses tidak sah.', site: 'Daftar site HMSI yang menjadi cakupan kepatuhan.', dept: 'Departemen penanggung jawab kewajiban dan izin.', portal: 'Portal resmi pemerintah yang dipantau crawler. Uji setiap URL pencarian sebelum diaktifkan.', kata: 'Kata kunci tematik SHEC untuk pencarian otomatis mingguan & manual.', smkp: '7 elemen / 51 sub-elemen SMKP Minerba (Kepdirjen 185.K/37.04/DJB/2019) — kata kunci dipakai untuk saran otomatis elemen SMKP pada PDF usulan regulasi.', param: 'Ambang pengingat, keamanan sesi, dan identitas aplikasi.' }[tab] })
     + `<div class="grid" style="grid-template-columns:230px minmax(0,1fr);align-items:start" id="setGrid"><div class="card" style="padding:8px"><div class="sb-sec" style="padding-top:6px">Konfigurasi Master</div>${TABS.map(([k, l, i]) => `<button class="nav ${tab === k ? 'on' : ''}" data-act="tab" data-g="pengaturan" data-v="${k}">${ic(i)}<span class="lbl">${l}</span></button>`).join('')}
