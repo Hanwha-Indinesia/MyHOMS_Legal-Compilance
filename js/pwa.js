@@ -21,27 +21,30 @@
   var tunda = null;
   var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   function el(id) { return document.getElementById(id); }
-  function buatTombol() {
-    if (el('pwaInstal') || standalone) return null;
-    var b = document.createElement('button');
-    b.id = 'pwaInstal'; b.type = 'button'; b.className = 'btn';
-    b.setAttribute('aria-label', 'Pasang aplikasi HMSI-LCMS di perangkat ini');
-    b.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:9000;display:none;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(0,0,0,.25);background:#F37321;color:#fff;border:0;border-radius:10px;padding:10px 14px;font:600 13px Inter,system-ui,sans-serif;cursor:pointer';
-    b.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">install_mobile</span><span>Pasang Aplikasi</span>';
-    document.body.appendChild(b);
-    return b;
+  // Tombol ikon kecil di topbar (setelah login) + tautan teks kecil di layar login. Tidak menutupi konten.
+  function pasang() {
+    if (!tunda) return;
+    tunda.prompt();
+    tunda.userChoice.then(function (r) { if (r.outcome === 'accepted') tunda = null; segarkan(); });
   }
-  window.addEventListener('beforeinstallprompt', function (e) {
-    e.preventDefault(); tunda = e;
-    var b = buatTombol(); if (!b) return;
-    b.style.display = 'inline-flex';
-    b.onclick = function () {
-      if (!tunda) return;
-      tunda.prompt();
-      tunda.userChoice.then(function (r) { if (r.outcome === 'accepted') b.style.display = 'none'; tunda = null; });
-    };
-  });
-  window.addEventListener('appinstalled', function () { var b = el('pwaInstal'); if (b) b.style.display = 'none'; tunda = null; });
+  function tautanLogin() {
+    var t = el('pwaLink');
+    if (!t) {
+      t = document.createElement('button'); t.id = 'pwaLink'; t.type = 'button';
+      t.textContent = 'Pasang aplikasi di perangkat ini';
+      t.style.cssText = 'position:fixed;right:12px;top:10px;z-index:50;display:none;background:none;border:0;color:#C75A10;font:600 12px Inter,system-ui,sans-serif;text-decoration:underline;cursor:pointer;padding:6px 10px';
+      t.onclick = pasang; document.body.appendChild(t);
+    }
+    return t;
+  }
+  function segarkan() {
+    var ada = !!tunda && !standalone, b = el('pwaInstal');
+    if (b) { b.classList.toggle('hide', !ada); b.onclick = pasang; }
+    var t = tautanLogin(); t.style.display = (ada && el('lNrp')) ? 'block' : 'none';
+  }
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); tunda = e; segarkan(); });
+  window.addEventListener('appinstalled', function () { tunda = null; segarkan(); });
+  setInterval(function () { if (tunda) segarkan(); }, 1500);
 
   // iOS Safari tidak punya beforeinstallprompt → petunjuk manual (sekali)
   var iOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
