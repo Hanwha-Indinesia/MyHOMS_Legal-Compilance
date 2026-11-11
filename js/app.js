@@ -1189,9 +1189,9 @@ function lampiranAntreanCard(a) {
 }
 function barisKw(k, i) {
   k = k || {};
-  return `<div class="rep k" data-kw="${i}"><input class="inp" name="kw_pasal" placeholder="Pasal/butir" value="${esc(k.pasal_butir || '')}" maxlength="200" aria-label="Pasal"><select class="inp" name="kw_period" aria-label="Periodisitas">${opsi(['Bulanan', 'Triwulan', 'Semester', 'Tahunan', 'Insidental'], k.periodisitas || 'Semester')}</select><input class="inp" name="kw_uraian" placeholder="Uraian kewajiban yang harus dipenuhi" value="${esc(k.uraian_kewajiban || '')}" maxlength="3000" aria-label="Uraian kewajiban"><select class="inp" name="kw_dept" aria-label="Departemen">${opsi([['', 'Departemen PIC']].concat(deptList().map(d => [d.kode, d.nama])), k.departemen_penanggung_jawab || '')}</select><button type="button" class="btn gh ic" data-act="kw-hapus" aria-label="Hapus baris">${ic('delete')}</button></div>`;
+  return `<div class="rep k" data-kw="${i}"><input class="inp" name="kw_pasal" placeholder="Pasal/butir" value="${esc(k.pasal_butir || '')}" maxlength="200" aria-label="Pasal"><select class="inp" name="kw_period" aria-label="Periodisitas">${opsi(['Bulanan', 'Triwulan', 'Semester', 'Tahunan', 'Insidental'], k.periodisitas || 'Semester')}</select><input class="inp" name="kw_uraian" placeholder="Uraian kewajiban yang harus dipenuhi" value="${esc(k.uraian_kewajiban || '')}" maxlength="3000" aria-label="Uraian kewajiban"><button type="button" class="btn gh ic" data-act="kw-hapus" aria-label="Hapus baris">${ic('delete')}</button></div>`;
 }
-function bacaKw(root) { return $$('[data-kw]', root).map(r => ({ pasal_butir: $('[name=kw_pasal]', r).value.trim(), periodisitas: $('[name=kw_period]', r).value, uraian_kewajiban: $('[name=kw_uraian]', r).value.trim(), departemen_penanggung_jawab: $('[name=kw_dept]', r).value })).filter(k => k.uraian_kewajiban); }
+function bacaKw(root) { return $$('[data-kw]', root).map(r => ({ pasal_butir: $('[name=kw_pasal]', r).value.trim(), periodisitas: $('[name=kw_period]', r).value, uraian_kewajiban: $('[name=kw_uraian]', r).value.trim() })).filter(k => k.uraian_kewajiban); }
 function formVerif(a, lama) {
   const statusLama = a.jenis_temuan === 'Pencabutan' ? 'Dicabut' : (a.jenis_temuan === 'Perubahan' ? 'Diubah' : '');
   const reg1Opts = (S.data.reg1 || []).filter(aktif).map(r => [r.id_reg1, `${r.id_reg1} — ${judulReg(r)}`]);
@@ -1205,10 +1205,9 @@ function formVerif(a, lama) {
       ${fld({ n: 'tautan_sumber_resmi', l: 'Tautan sumber resmi', t: 'url', v: a.tautan_sumber, full: true })}
       <div class="fsec"><span class="bar"></span>2. Relevansi Kegiatan Operasional</div>
       ${fld({ n: 'relevansi_kegiatan', l: 'Relevansi terhadap kegiatan HMSI', t: 'textarea', rows: 3, req: true, full: true, max: 2000, ph: 'Contoh: Berlaku untuk seluruh armada mobile crane dan workshop maintenance…' })}
-      <div class="fsec"><span class="bar"></span>3. Site Berlaku &amp; PIC</div>
+      <div class="fsec"><span class="bar"></span>3. Site Berlaku</div>
       ${fld({ n: 'cakupan', l: 'Cakupan site', t: 'select', opts: [['ALL', 'Semua site (distribusi korporat serentak)'], ['SPESIFIK', 'Pilih site spesifik']], v: 'ALL', ph: false, ch: 'cakupan', full: true })}
       <div class="full hide" id="wrapSite">${fld({ n: 'site_berlaku', l: 'Site spesifik', t: 'checks', opts: (S.data.sites || []).filter(s => s.status === 'Aktif').map(s => [s.kode, s.nama]) })}</div>
-      <div class="full">${fld({ n: 'pic_departemen', l: 'Departemen penanggung jawab (PIC eksekusi)', t: 'checks', req: true, opts: deptList().map(d => [d.kode, d.nama]) })}</div>
       <div class="fsec"><span class="bar"></span>4. Keterkaitan SMKP &amp; Silsilah</div>
       <div class="full">${fld({ n: 'keterkaitan_smkp', l: 'Keterkaitan SMKP Minerba', t: 'checks', v: 'II.3,V.3', opts: [['II.3', 'Elemen II.3 — Identifikasi & pemenuhan peraturan'], ['V.3', 'Elemen V.3 — Evaluasi kepatuhan hukum']] })}</div>
       ${fld({ n: 'id_reg1_terkait', l: 'Regulasi terkait (lama)', t: 'select', opts: reg1Opts, v: a.id_reg1_terkait, ph: '— Tidak ada —' })}${fld({ n: 'statusLama', l: 'Status regulasi lama', t: 'select', opts: [['', 'Tidak berubah'], ['Diubah', 'Tandai "Diubah (Amended)"'], ['Dicabut', 'Tandai "Dicabut"']], v: statusLama, ph: false })}
@@ -1287,7 +1286,6 @@ HAL.reg1 = el => {
     <div class="card"><div class="fbar"><div class="srch">${ic('search')}<input class="inp" id="r1Q" data-in="q" data-t="reg1" value="${esc(st.q)}" placeholder="Cari nomor, judul, kode register…" aria-label="Cari regulasi"></div>
       <select class="inp" data-ch="flt" data-t="reg1" data-k="jenis" aria-label="Kategori">${opsi([['ALL', 'Semua kategori']].concat(JENIS), st.jenis)}</select>
       <select class="inp" data-ch="flt" data-t="reg1" data-k="status" aria-label="Status">${opsi([['ALL', 'Semua status'], 'Berlaku', 'Diubah', 'Dicabut'], st.status)}</select>
-      <select class="inp" data-ch="flt" data-t="reg1" data-k="dept" aria-label="PIC Departemen">${opsi([['ALL', 'Semua PIC departemen']].concat(deptList().map(d => [d.kode, d.nama])), st.dept)}</select>
       <select class="inp" data-ch="flt" data-t="reg1" data-k="smkp" aria-label="Elemen SMKP">${opsi([['ALL', 'Semua elemen SMKP']].concat(smkpOpts()), st.smkp)}</select>
       ${st.q || st.jenis !== 'ALL' || st.status !== 'ALL' || st.dept !== 'ALL' || st.smkp !== 'ALL' || st.arsip ? `<button class="btn gh sm" data-act="reset-reg1">${ic('filter_alt_off')} Reset Filter</button>` : ''}</div>
       <div class="factive">${['ALL'].concat(JENIS).map(j => { const n = j === 'ALL' ? base.length : base.filter(r => r.jenis_peraturan === j).length; return n || j === 'ALL' ? `<button class="chip ${st.jenis === j ? 'on' : ''}" data-act="r1-jenis" data-v="${j}">${j === 'ALL' ? 'Semua' : esc(j)} <b>${n}</b></button>` : ''; }).join('')}</div>
@@ -1296,7 +1294,7 @@ HAL.reg1 = el => {
         { l: 'Nomor & Tahun', r: r => `<div class="t1">${esc(judulReg(r))}</div><div class="t2">${esc(r.sumber_resmi || '–')}</div>` },
         { l: 'Judul & Kategori', r: r => `<div class="clamp2" style="max-width:380px">${esc(r.judul)}</div><div class="row wrap mt8" style="gap:4px">${pill(r.jenis_peraturan, 'o', false)}${String(r.keterkaitan_smkp || '').split(',').filter(Boolean).map(x => pill('SMKP ' + x, 'b', false)).join('')}${String(r.elemen_smkp || '').split(',').filter(Boolean).map(k => pill(k, 'n', false)).join('')}</div>` },
         { l: 'Kewajiban Pasal', r: r => `<span class="pill b">${ic('rule')} ${kwN(r.id_reg1)} klausul</span>` },
-        { l: 'Distribusi & PIC', r: r => `<div class="small">${esc(namaSite(r.site_berlaku))}</div><div class="t2 clamp2">PIC: ${esc(namaDept(r.pic_departemen))}</div>` },
+        { l: 'Berlaku untuk', r: r => `<div class="small">${esc(namaSite(r.site_berlaku))}</div>` },
         { l: 'Status', r: r => aktif(r) ? pill(r.status_berlaku) : pill('Arsip', 'n') }
       ] })}</div>
     <div class="card info mt16"><div class="card-b row wrap" style="gap:12px">${ic('sync', 't-b')}<div class="sp" style="min-width:240px"><b>Integrasi Google Sheets &amp; SMKP Minerba Element II.3</b><div class="small muted2">Register 1 tersimpan di spreadsheet master SHEC Corporate (terpisah dari MY HOMS). Data disinkronkan otomatis setiap ada perubahan.</div></div>${is(R.CORP, R.SITE, R.MGT) ? `<button class="btn" data-act="go" data-sec="audit">${ic('history')} Log Audit Trail</button>` : ''}<button class="btn p" data-act="muatulang">${ic('sync')} Paksa Sinkronisasi</button></div></div>`;
@@ -1331,7 +1329,6 @@ HAL.reg1d = (el, p) => {
   if (tab === 'kw') isiTab = `${can.reg1() ? `<div class="fbar" style="justify-content:flex-end"><button class="btn p sm" data-act="kw-form" data-reg="${esc(r.id_reg1)}">${ic('add')} Tambah Kewajiban</button></div>` : ''}${tabel('kw' + r.id_reg1, { key: 'id_kewajiban', rows: kws.sort((a, b) => (aktif(b) - aktif(a)) || String(a.id_kewajiban).localeCompare(b.id_kewajiban)), unit: 'kewajiban', rowCls: k => aktif(k) ? '' : 'tmp', empty: kosong('rule', 'Belum ada kewajiban pasal', 'Tambahkan pasal/butir kewajiban agar dapat dievaluasi.'), cols: [
     { l: 'Pasal / Butir', r: k => `<div class="t1">${esc(k.pasal_butir || '–')}</div><div class="t2 mono">${esc(k.id_kewajiban)}</div>` },
     { l: 'Uraian Kewajiban', r: k => `<div style="max-width:420px">${esc(k.uraian_kewajiban)}</div>${aktif(k) ? '' : pill('Arsip', 'n')}` },
-    { l: 'Departemen PIC', r: k => `<span class="small">${esc(namaDept(k.departemen_penanggung_jawab))}</span>` },
     { l: 'Site / Periode', r: k => `<div class="small">${esc(namaSite(k.site_berlaku))}</div><div class="t2">${esc(k.periodisitas || '–')}</div>` },
     { l: 'Status ' + labelPeriode(per).replace('Semester ', 'Smt '), r: statKw },
     { l: '', cls: 'act', r: k => can.reg1() ? `<button class="btn gh ic sm" data-act="kw-form" data-reg="${esc(r.id_reg1)}" data-id="${esc(k.id_kewajiban)}" title="Ubah" aria-label="Ubah kewajiban">${ic('edit')}</button><button class="btn gh ic sm" data-act="kw-arsip" data-id="${esc(k.id_kewajiban)}" title="${aktif(k) ? 'Arsipkan' : 'Pulihkan'}" aria-label="${aktif(k) ? 'Arsipkan' : 'Pulihkan'}">${ic(aktif(k) ? 'archive' : 'unarchive')}</button>` : '' }
@@ -1350,7 +1347,7 @@ HAL.reg1d = (el, p) => {
   }) + `<div class="grid g-73 mb16"><div class="card"><div class="card-h"><div class="ic">${ic('info')}</div><div><h3>Informasi Regulasi</h3><p>Master aktif Register 1</p></div></div><div class="card-b"><dl class="dl c3">
       <div><dt>Kode register</dt><dd class="mono b6 t-o">${esc(r.id_reg1)}</dd></div><div><dt>Bentuk</dt><dd>${esc(r.bentuk_peraturan || '–')}</dd></div><div><dt>Nomor / Tahun</dt><dd>${esc(r.nomor)} / ${esc(r.tahun)}</dd></div>
       <div><dt>Tanggal penetapan</dt><dd>${fmtTgl(r.tanggal_penetapan)}</dd></div><div><dt>Sumber resmi</dt><dd>${esc(r.sumber_resmi || '–')}</dd></div><div><dt>Keterkaitan SMKP</dt><dd>${esc(r.keterkaitan_smkp || '–')}</dd></div>
-      <div><dt>Site berlaku</dt><dd>${esc(namaSite(r.site_berlaku))}</dd></div><div><dt>PIC departemen</dt><dd>${esc(namaDept(r.pic_departemen))}</dd></div><div><dt>Diverifikasi</dt><dd>${esc(namaUser(r.diverifikasi_oleh))}<div class="t2 small muted">${fmtTgl(r.tanggal_verifikasi)}${r.id_antrean_asal ? ' • dari ' + esc(r.id_antrean_asal) : ''}</div></dd></div>
+      <div><dt>Site berlaku</dt><dd>${esc(namaSite(r.site_berlaku))}</dd></div><div><dt>Diverifikasi</dt><dd>${esc(namaUser(r.diverifikasi_oleh))}<div class="t2 small muted">${fmtTgl(r.tanggal_verifikasi)}${r.id_antrean_asal ? ' • dari ' + esc(r.id_antrean_asal) : ''}</div></dd></div>
       <div class="full"><dt>Relevansi terhadap kegiatan HMSI</dt><dd>${esc(r.relevansi_kegiatan || '–')}</dd></div>
       <div class="full"><dt>Elemen SMKP terkonfirmasi (FR-12)</dt><dd>${r.elemen_smkp ? smkpBadges(r.elemen_smkp) : '<span class="muted">–</span>'}</dd></div></dl></div></div>
     <div class="card"><div class="card-h"><div class="ic">${ic('donut_large')}</div><div><h3>Status Pemenuhan</h3><p>${esc(labelPeriode(per))} • evaluasi terverifikasi</p></div></div><div class="card-b">
@@ -1388,12 +1385,13 @@ function formReg1(r) {
       <div class="fsec"><span class="bar"></span>Keberlakuan &amp; Relevansi</div>
       ${fld({ n: 'status_berlaku', l: 'Status berlaku', t: 'select', opts: ['Berlaku', 'Diubah', 'Dicabut'], v: r.status_berlaku, ph: false })}${fld({ n: 'id_reg1_terkait', l: 'Regulasi terkait / pengubah', t: 'select', opts: (S.data.reg1 || []).filter(x => aktif(x) && x.id_reg1 !== r.id_reg1).map(x => [x.id_reg1, x.id_reg1 + ' — ' + judulReg(x)]), v: r.id_reg1_terkait, ph: '— Tidak ada —' })}
       ${fld({ n: 'relevansi_kegiatan', l: 'Relevansi terhadap kegiatan HMSI', t: 'textarea', rows: 3, v: r.relevansi_kegiatan, req: true, full: true, max: 2000 })}
-      ${fld({ n: 'cakupan', l: 'Cakupan site', t: 'select', opts: [['ALL', 'Semua site'], ['SPESIFIK', 'Site spesifik']], v: spes ? 'SPESIFIK' : 'ALL', ph: false, ch: 'cakupan', full: true })}
-      <div class="full ${spes ? '' : 'hide'}" id="wrapSite">${fld({ n: 'site_berlaku', l: 'Site spesifik', t: 'checks', v: spes ? r.site_berlaku : '', opts: (S.data.sites || []).map(s => [s.kode, s.nama]) })}</div>
-      <div class="full">${fld({ n: 'pic_departemen', l: 'PIC departemen', t: 'checks', req: true, v: r.pic_departemen, opts: deptList().map(d => [d.kode, d.nama]) })}</div>
       <div class="full">${fld({ n: 'keterkaitan_smkp', l: 'Keterkaitan SMKP Minerba', t: 'checks', v: r.keterkaitan_smkp, opts: [['II.3', 'Elemen II.3'], ['V.3', 'Elemen V.3']] })}</div>
       <div class="full">${fld({ n: 'elemen_smkp', l: 'Elemen SMKP terkonfirmasi (taksonomi 51 sub-elemen, opsional)', t: 'checks', v: r.elemen_smkp, opts: smkpOpts() })}</div>
       ${baru ? `<div class="fsec"><span class="bar"></span>Kewajiban Pasal Awal</div><div class="full col" style="gap:8px" id="kwRows">${barisKw({}, 0)}</div><div class="full"><button type="button" class="add-row" data-act="kw-tambah">${ic('add')} Tambah Kewajiban</button></div>` : ''}
+      <div class="fsec"><span class="bar"></span>Distribusi ke Site</div>
+      ${fld({ n: 'cakupan', l: 'Regulasi dan pasal di atas berlaku untuk', t: 'select', opts: [['ALL', 'Semua site'], ['SPESIFIK', 'Site tertentu (pilih di bawah)']], v: spes ? 'SPESIFIK' : 'ALL', ph: false, ch: 'cakupan', full: true })}
+      <div class="full ${spes ? '' : 'hide'}" id="wrapSite">${fld({ n: 'site_berlaku', l: 'Pilih site', t: 'checks', v: spes ? r.site_berlaku : '', opts: (S.data.sites || []).filter(x => x.status === 'Aktif').map(x => [x.kode, x.nama]) })}</div>
+      <div class="full small muted">${baru ? 'Setelah Simpan &amp; Terbitkan, peraturan langsung berstatus berlaku dan muncul di Register serta daftar evaluasi site terpilih.' : ''}</div>
     </form>`,
     foot: `<span class="lf">${ic('shield', 's')} Tercatat di Audit_Log</span><button class="btn gh" data-act="mclose">Batal</button><button class="btn p" data-act="reg1-simpan" data-id="${esc(r.id_reg1 || '')}">${ic('save')} ${baru ? 'Simpan & Terbitkan' : 'Simpan Perubahan'}</button>` });
 }
@@ -1402,11 +1400,17 @@ Object.assign(ACT, {
     const f = $('#fReg1');
     if (!validasi(f, x => ({ tahun: /^\d{4}$/.test(x.tahun) ? '' : 'Tahun harus 4 digit.', site_berlaku: x.cakupan === 'SPESIFIK' && !x.site_berlaku ? 'Pilih minimal satu site.' : '' }))) return;
     const v = bacaForm(f); v.site_berlaku = v.cakupan === 'ALL' ? 'ALL' : v.site_berlaku; v.id_reg1 = t.dataset.id; v.kewajiban = $('#kwRows') ? bacaKw(f) : [];
+    if (!v.id_reg1 && !v.kewajiban.length) { toast('Isi minimal satu pasal kewajiban agar peraturan dapat dievaluasi site.', 'error'); return; }
     try {
       const res = await kirim('reg1.simpan', v, { btn: t, txt: 'Menyimpan…' });
       upsert('reg1', 'id_reg1', res.data.reg1); (res.data.kewajiban || []).forEach(k => upsert('kewajiban', 'id_kewajiban', k)); S.idx = null;
       tutupModal();
-      if (!v.id_reg1) go('reg1d', { id: res.data.reg1.id_reg1 }); else rerender(true);
+      if (!v.id_reg1) {
+        const nSite = v.site_berlaku === 'ALL' ? (S.data.sites || []).filter(x => x.status === 'Aktif').length : String(v.site_berlaku).split(',').filter(Boolean).length;
+        const nKw = (res.data.kewajiban || []).length;
+        toast(`Berlaku untuk ${v.site_berlaku === 'ALL' ? 'semua site (' + nSite + ')' : nSite + ' site'}. ${nKw} kewajiban pasal menunggu evaluasi site.`, 'success', 'Peraturan terbit');
+        go('reg1d', { id: res.data.reg1.id_reg1 });
+      } else rerender(true);
     } catch (e) { /* toast */ }
   },
   'reg1-arsip': async t => {
@@ -1423,13 +1427,15 @@ Object.assign(ACT, {
       modal({ title: 'Ubah Kewajiban', sub: reg ? judulReg(reg) : '', icon: 'rule', body: `<form id="fKw" class="frm" novalidate>
         ${fld({ n: 'pasal_butir', l: 'Pasal / butir', v: k.pasal_butir, req: true, max: 200, ph: 'Contoh: Pasal 14 ayat (2)' })}${fld({ n: 'periodisitas', l: 'Periodisitas evaluasi', t: 'select', opts: ['Bulanan', 'Triwulan', 'Semester', 'Tahunan', 'Insidental'], v: k.periodisitas, ph: false })}
         ${fld({ n: 'uraian_kewajiban', l: 'Uraian kewajiban', t: 'textarea', rows: 4, v: k.uraian_kewajiban, req: true, full: true, max: 3000 })}
-        ${fld({ n: 'departemen_penanggung_jawab', l: 'Departemen penanggung jawab', t: 'select', opts: deptList().map(d => [d.kode, d.nama]), v: k.departemen_penanggung_jawab, req: true, full: true })}
         <div class="full">${fld({ n: 'site_berlaku', l: 'Site berlaku (kosongkan = semua site)', t: 'checks', v: k.site_berlaku === 'ALL' ? '' : k.site_berlaku, opts: (S.data.sites || []).map(s => [s.kode, s.nama]) })}</div></form>`,
         foot: `<button class="btn gh" data-act="mclose">Batal</button><button class="btn p" data-act="kw-simpan" data-reg="${esc(t.dataset.reg)}" data-id="${esc(t.dataset.id)}">${ic('save')} Simpan</button>` });
     } else {
       modal({ title: 'Tambah Kewajiban Pasal', sub: reg ? judulReg(reg) : '', icon: 'rule', size: 'xl', body: `<form id="fKw" class="frm" novalidate>
         <div class="full"><div class="small muted" style="margin-bottom:6px">Tambahkan satu atau beberapa pasal/butir kewajiban sekaligus. Site berlaku akan mengikuti site regulasi induk; gunakan tombol Ubah per-baris di tabel untuk mengatur site tertentu.</div></div>
-        <div class="full col" style="gap:8px" id="kwRows">${barisKw({}, 0)}</div><div class="full"><button type="button" class="add-row" data-act="kw-tambah">${ic('add')} Tambah Baris</button></div></form>`,
+        <div class="full col" style="gap:8px" id="kwRows">${barisKw({}, 0)}</div><div class="full"><button type="button" class="add-row" data-act="kw-tambah">${ic('add')} Tambah Baris</button></div>
+        <div class="fsec"><span class="bar"></span>Distribusi ke Site</div>
+        ${fld({ n: 'cakupan', l: 'Pasal di atas berlaku untuk', t: 'select', opts: [['IKUT', 'Semua site regulasi induk (' + namaSite(reg ? reg.site_berlaku : 'ALL') + ')'], ['SPESIFIK', 'Hanya site tertentu (pilih di bawah)']], v: 'IKUT', ph: false, ch: 'cakupan', full: true })}
+        <div class="full hide" id="wrapSite">${fld({ n: 'site_berlaku', l: 'Pilih site', t: 'checks', opts: (S.data.sites || []).filter(x => x.status === 'Aktif' && (!reg || !reg.site_berlaku || reg.site_berlaku === 'ALL' || String(reg.site_berlaku).split(',').includes(x.kode))).map(x => [x.kode, x.nama]) })}</div></form>`,
         foot: `<button class="btn gh" data-act="mclose">Batal</button><button class="btn p" data-act="kw-simpan" data-reg="${esc(t.dataset.reg)}">${ic('save')} Simpan</button>` });
     }
   },
@@ -1441,7 +1447,13 @@ Object.assign(ACT, {
       tutupModal(); kirim('kewajiban.simpan', v, { apply: () => upsert('kewajiban', 'id_kewajiban', v) }).catch(() => { }); return;
     }
     const list = bacaKw(f);
-    if (!list.length) { toast('Isi minimal satu uraian kewajiban.', 'r'); return; }
+    if (!list.length) { toast('Isi minimal satu uraian kewajiban.', 'error'); return; }
+    const cak = (f.querySelector('[name=cakupan]') || {}).value || 'IKUT';
+    if (cak !== 'IKUT') {
+      const v = bacaForm(f), sit = cak === 'ALL' ? 'ALL' : (v.site_berlaku || '');
+      if (!sit) { toast('Pilih minimal satu site.', 'error'); return; }
+      list.forEach(k => { k.site_berlaku = sit; });
+    }
     try {
       const res = await kirim('kewajiban.simpan_banyak', { id_reg1: t.dataset.reg, list }, { btn: t, txt: 'Menyimpan…' });
       (res.data.kewajiban || []).forEach(k => upsert('kewajiban', 'id_kewajiban', k));
