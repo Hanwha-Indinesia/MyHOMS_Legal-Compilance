@@ -181,7 +181,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.1.2';
+const APP_UI_VERSI = '2.1.3';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -371,7 +371,7 @@ function skeleton() {
   return `<div class="sk sk-h"></div><div class="grid g6 kpis mt16">${'<div class="sk sk-c"></div>'.repeat(6)}</div><div class="grid g-73 mt16"><div class="sk" style="height:320px"></div><div class="sk" style="height:320px"></div></div>`;
 }
 function kpi(o) {
-  return `<div class="kpi ${o.l ? 'l-' + o.l : ''} ${o.act ? 'click' : ''} ${o.sel ? 'sel' : ''}" ${o.act ? `data-act="${o.act}" data-v="${esc(o.v || '')}" ${o.sec ? `data-sec="${o.sec}"` : ''} role="button" tabindex="0"` : ''}>
+  return `<div class="kpi tn-${o.ic || 'b'} ${o.l ? 'l-' + o.l : ''} ${o.act ? 'click' : ''} ${o.sel ? 'sel' : ''}" ${o.act ? `data-act="${o.act}" data-v="${esc(o.v || '')}" ${o.sec ? `data-sec="${o.sec}"` : ''} role="button" tabindex="0"` : ''}>
     <div class="kpi-h"><div class="kpi-l">${esc(o.label)}</div>${o.icon ? `<div class="kpi-ic ${o.ic || ''}">${ic(o.icon, 's')}</div>` : ''}</div>
     <div class="kpi-v ${o.vc || ''}">${o.value}${o.unit ? `<small>${esc(o.unit)}</small>` : ''}</div>${o.sub ? `<div class="kpi-s">${o.sub}</div>` : ''}</div>`;
 }
@@ -809,9 +809,26 @@ function donut(id, data, total) {
     el.parentNode.style.background = `radial-gradient(circle,#fff 52%,transparent 53%),conic-gradient(${seg})`; el.parentNode.style.borderRadius = '50%';
   }
 }
+
+function donutSvg(d, centro, sub) {
+  const tot = d.reduce((x, k) => x + k.v, 0), R = 42, C = 2 * Math.PI * R; let acc = 0;
+  const seg = tot ? d.filter(k => k.v).map(k => { const len = C * k.v / tot, o = -acc; acc += len; return `<circle cx="60" cy="60" r="${R}" fill="none" stroke="${k.c}" stroke-width="14" stroke-dasharray="${Math.max(len - 1.5, 0.5).toFixed(1)} ${C.toFixed(1)}" stroke-dashoffset="${o.toFixed(1)}" transform="rotate(-90 60 60)" class="dn-seg"><title>${esc(k.l)}: ${nf(k.v)}</title></circle>`; }).join('') : '';
+  return `<svg viewBox="0 0 120 120" class="dn" role="img" aria-label="${esc(sub)}: ${d.map(k => k.l + ' ' + k.v).join(', ')}"><circle cx="60" cy="60" r="${R}" fill="none" stroke="#EEF0F3" stroke-width="14"/>${seg}<text x="60" y="62" text-anchor="middle" class="dn-n">${esc(centro)}</text><text x="60" y="77" text-anchor="middle" class="dn-s">${esc(sub)}</text></svg>`;
+}
+function legenda(d) { return `<div class="ch-lg">${d.map(k => `<span><i style="background:${k.c}"></i>${esc(k.l)}<b>${nf(k.v)}</b></span>`).join('')}</div>`; }
+function chartCards(GR, per) {
+  const [gi, ge, gr] = GR, tI = gi.d.reduce((x, k) => x + k.v, 0), tE = ge.d.reduce((x, k) => x + k.v, 0), tR = gr.d.reduce((x, k) => x + k.v, 0);
+  const mx = Math.max(1, ...ge.d.map(k => k.v)), closed = gr.d.find(k => k.l === 'Closed').v;
+  const cH = (ic1, jud, sub, body) => `<div class="card chc"><div class="card-h"><div class="ic">${ic(ic1)}</div><div class="sp"><h3>${esc(jud)}</h3><p>${esc(sub)}</p></div></div><div class="card-b">${body}</div></div>`;
+  return `<div class="grid g3 mb16 chrow">
+    ${cH('verified', 'Status Izin & Lisensi', `${nf(tI)} dokumen terdaftar`, `<div class="ch-donut">${donutSvg(gi.d, nf(tI), 'izin')}${legenda(gi.d)}</div>`)}
+    ${cH('rule', 'Hasil Evaluasi', labelPeriode(per) + ` • ${nf(tE)} evaluasi`, `<div class="ch-cols" role="img" aria-label="Hasil evaluasi: ${ge.d.map(k => k.l + ' ' + k.v).join(', ')}">${ge.d.map(k => `<div class="ch-col"><span class="ch-v">${nf(k.v)}</span><div class="ch-bw"><i style="height:${(k.v / mx * 100).toFixed(0)}%;background:linear-gradient(180deg,${k.c},${k.c}AA)"></i></div><span class="ch-n">${esc(k.l)}</span></div>`).join('')}</div>`)}
+    ${cH('assignment', 'Progres RTP', `${nf(tR)} rencana tindak perbaikan`, `<div class="ch-rtp"><div class="ch-big">${tR ? fpct(pct(closed, tR)) : '–'}<small>selesai (Closed)</small></div>${gr.d.map(k => `<div class="ch-row"><span>${esc(k.l)}</span><div class="ch-t"><i style="width:${tR ? (k.v / tR * 100).toFixed(0) : 0}%;background:${k.c}"></i></div><b>${nf(k.v)}</b></div>`).join('')}</div>`)}
+  </div>`;
+}
 function gaugePk(p, tg) {
   const C = 2 * Math.PI * 52, v = p == null ? 0 : Math.max(0, Math.min(100, p)), ok = p != null && p >= tg;
-  return `<svg viewBox="0 0 130 130" class="pk-gauge" role="img" aria-label="Tingkat kepatuhan ${p == null ? 'belum ada data' : fpct(p)}"><defs><linearGradient id="gkG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDBA74"/><stop offset="1" stop-color="${ok ? '#16A34A' : '#F37321'}"/></linearGradient></defs><circle cx="65" cy="65" r="52" fill="none" stroke="#EEF0F3" stroke-width="12"/><circle cx="65" cy="65" r="52" fill="none" stroke="url(#gkG)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(C * v / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 65 65)" class="pk-arc"/><text x="65" y="66" text-anchor="middle" class="pk-n">${p == null ? '–' : fpct(p)}</text><text x="65" y="84" text-anchor="middle" class="pk-s">kepatuhan</text></svg>`;
+  return `<svg viewBox="0 0 130 130" class="pk-gauge" role="img" aria-label="Tingkat kepatuhan ${p == null ? 'belum ada data' : fpct(p)}"><defs><linearGradient id="gkG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDBA74"/><stop offset="1" stop-color="${ok ? '#16A34A' : '#F37321'}"/></linearGradient></defs><circle cx="65" cy="65" r="52" fill="none" class="pk-trk" stroke-width="12"/><circle cx="65" cy="65" r="52" fill="none" stroke="url(#gkG)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(C * v / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 65 65)" class="pk-arc"/><text x="65" y="66" text-anchor="middle" class="pk-n">${p == null ? '–' : fpct(p)}</text><text x="65" y="84" text-anchor="middle" class="pk-s">kepatuhan</text></svg>`;
 }
 function legenda(data) { const tot = data.reduce((a, d) => a + d.v, 0); return `<div class="lgd">${data.map(d => `<div class="lgd-i"><i style="background:${d.c}"></i><span>${esc(d.l)}</span><b>${nf(d.v)}</b><span class="muted small" style="flex:0">${fpct(pct(d.v, tot))}</span></div>`).join('')}</div>`; }
 function diffKata(a, b) {
@@ -873,6 +890,9 @@ HAL.dashboard = el => {
   tindak.sort((a, b) => a.w - b.w);
   const heroOn = is(R.CORP, R.SITE);
   el.innerHTML = `
+  <div class="hb"><div class="hb-t"><span class="hb-hi">Selamat Datang,</span><h2>${esc(S.me.nama)}</h2><div class="hb-tag">MyHOMS Legal Compliance</div>
+    <div class="hb-chips"><span>${ic('badge', 'xs')} ${esc(ROLE_LABEL[S.me.role] || S.me.role)}</span><span>${ic('location_on', 'xs')} ${esc(namaSite(S.me.site))}</span><span>${ic('calendar_today', 'xs')} ${esc(labelPeriode(per))}</span></div></div>
+    <div class="hb-g">${gaugePk(pTot, tg)}<div class="hb-gc"><b>Tingkat kepatuhan</b><span>${nf(ver.length)} evaluasi terverifikasi</span><span class="pk-tag ${pTot != null && pTot >= tg ? 'ok' : 'low'}">${pTot == null ? 'Belum ada data' : (pTot >= tg ? 'Memenuhi ambang ' + tg + '%' : 'Di bawah ambang ' + tg + '%')}</span></div></div></div>
   ${heroOn ? `<div class="hero"><div class="hic">${ic('travel_explore', 'l')}</div><div style="flex:1;min-width:240px"><h2>Pencarian Regulasi Otomatis (Portal Pemerintah) <span class="tag">${ic('smart_toy', 'xs')} Bot Aktif</span></h2>
     <p>Pemeriksaan otomatis terakhir: <b>${S.stat.portalTerakhir ? fmtWkt(S.stat.portalTerakhir) + ' WIB' : 'belum pernah'}</b>${is(R.CORP) ? ` • <b class="t-o">${antM.length} regulasi baru/berubah</b> memerlukan validasi Corporate SHEC.` : '. Usulkan regulasi tambahan bila diperlukan.'}</p></div>
     <div class="ha">${is(R.CORP) ? `<button class="btn" data-act="go" data-sec="pencarian" data-tab="antrean">${ic('fact_check')} Lihat Antrean Verifikasi (${antM.length})</button><button class="btn p" data-act="go" data-sec="pencarian" data-tab="cari">${ic('travel_explore')} Cari Sekarang (Manual)</button>` : `<button class="btn p" data-act="usul">${ic('add_circle')} Usulkan Regulasi</button>`}</div></div>` : ''}
@@ -891,6 +911,7 @@ HAL.dashboard = el => {
     ${kpi({ label: 'Izin Kedaluwarsa', value: nf(nIz('Kedaluwarsa')), unit: 'kritis', icon: 'error', ic: 'r', l: 'r', vc: 't-r', sub: nIz('Kedaluwarsa') ? `<span class="t-r b6">${ic('priority_high', 'xs')} Eskalasi ke PJO site</span>` : 'Tidak ada' })}
     ${kpi({ label: 'RTP Overdue', value: nf(ovd.length), unit: 'tindakan', icon: 'assignment_late', ic: 'r', l: ovd.length ? 'r' : '', vc: ovd.length ? 't-r' : '', sub: `dari ${rtpAkt.length} RTP aktif • SMKP V.3` })}
   </div>
+  ${chartCards(GR, per)}
   <div class="grid g-73 mb16">
     <div class="card"><div class="card-h"><div class="sp"><h3>Tingkat Kepatuhan Evaluasi per Site</h3><p>SMKP Minerba Sub Elemen II.3 &amp; V.3 — evaluasi terverifikasi ${esc(labelPeriode(per))}</p></div>
       <span class="pill g">Rata-rata ${fpct(pTot)}</span><span class="small muted row">${'<i style="width:10px;height:10px;background:var(--o);border-radius:2px;display:inline-block"></i>'} Realisasi <i style="width:2px;height:12px;background:var(--r);display:inline-block;margin-left:6px"></i> Batas ${tg}%</span></div>
@@ -898,9 +919,6 @@ HAL.dashboard = el => {
       ${rendah.length ? `<div class="note r mt16">${ic('warning')}<div>${rendah.length} site berada di bawah ambang batas mandatori ${tg}% (${rendah.map(x => esc(x.s.nama)).join(', ')}).</div></div>` : ''}</div>
       <div class="card-f"><button class="lnk" data-act="go" data-sec="evaluasi">Buka Analisis Matriks Lengkap ${ic('arrow_forward', 's')}</button></div></div>
     <div class="col" style="gap:16px">
-      <div class="card pk"><div class="card-h"><div class="sp"><h3>Peta Kepatuhan &amp; Perizinan</h3><p>Gambaran agregat ${S.ui.site === 'ALL' ? 'seluruh site' : esc(namaSite(S.ui.site))}</p></div></div>
-        <div class="card-b"><div class="pk-top">${gaugePk(pTot, tg)}<div class="pk-cap"><b>Tingkat kepatuhan ${esc(labelPeriode(per))}</b><span>${nf(ver.length)} evaluasi terverifikasi • ambang mandatori ${tg}%</span><span class="pk-tag ${pTot != null && pTot >= tg ? 'ok' : 'low'}">${pTot == null ? 'Belum ada data' : (pTot >= tg ? 'Memenuhi ambang' : 'Di bawah ambang')}</span></div></div>
-        ${GR.map(g => { const tot = g.d.reduce((x, d) => x + d.v, 0); return `<div class="pk-g"><div class="pk-h"><span class="pk-i">${ic(g.i)}</span><b>${esc(g.t)}</b><span class="pk-t">${nf(tot)} ${esc(g.n)}</span></div><div class="pk-bar" role="img" aria-label="${esc(g.t)}: ${g.d.map(d => d.l + ' ' + d.v).join(', ')}">${tot ? g.d.filter(d => d.v).map(d => `<i class="pk-seg" style="flex:${d.v};background:${d.c}" title="${esc(d.l)}: ${nf(d.v)} (${fpct(pct(d.v, tot))})"></i>`).join('') : '<i class="pk-seg" style="flex:1;background:#E5E7EB"></i>'}</div><div class="pk-lg">${g.d.map(d => `<span><i style="background:${d.c}"></i>${esc(d.l)} <b>${nf(d.v)}</b></span>`).join('')}</div></div>`; }).join('')}</div></div>
       <div class="card"><div class="card-h"><div class="ic">${ic('auto_awesome')}</div><div><h3>Insight Otomatis</h3><p>Analisis aturan dari data terkini</p></div></div><div class="card-b insight"><ul>${ins.map(x => `<li>${ic('arrow_right')}<span>${x}</span></li>`).join('')}</ul></div></div>
     </div>
   </div>
