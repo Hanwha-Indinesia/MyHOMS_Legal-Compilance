@@ -179,7 +179,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.1.0';
+const APP_UI_VERSI = '2.1.1';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -560,9 +560,9 @@ function tutupSb() { $('#sb').classList.remove('open'); $('#ovlsb').classList.re
 function renderChrome() {
   const u = S.me; if (!u) return;
   const nmApp = cfg('nama_aplikasi', 'HMSI-LCMS');
-  $('#sbNama').textContent = nmApp;
+  $('#sbNama').textContent = /^HMSI-LCMS$/i.test(nmApp) ? 'MyHOMS' : nmApp;
   const logo = cfg('logo_url', '');
-  $('#sbLogo').innerHTML = /^https:\/\//.test(logo) ? `<img src="${esc(logo)}" alt="Logo">` : 'HMSI';
+  $('#sbLogo').innerHTML = `<img src="${/^https:\/\//.test(logo) ? esc(logo) : './icons/logo-mark.png'}" alt="MyHOMS">`;
   ['#sbAv', '#tbAv'].forEach(s => { $(s).textContent = inisial(u.nama); });
   $('#sbUNama').textContent = u.nama; $('#tbUNama').textContent = u.nama;
   const hm = $('.tb-crumb .hm'); if (hm) hm.innerHTML = esc(ROLE_LABEL[u.role] || u.role) + '&nbsp;/&nbsp;';
@@ -604,11 +604,10 @@ function daftarNotif() {
 /* ───────────── AUTENTIKASI ───────────── */
 function tampilAuth(html) { $('#app').classList.remove('on'); const a = $('#auth'); a.innerHTML = html; a.classList.add('on'); sembunyiBoot(); }
 function sembunyiBoot() { const b = $('#boot'); if (b) { b.style.opacity = '0'; setTimeout(() => b.remove(), 200); } }
-function brand() { return `<div class="brand"><div class="sb-logo">HMSI</div><div><div class="b7" style="font-size:15px">${esc(cfg('nama_aplikasi', 'HMSI-LCMS'))}</div><div class="xsmall muted">Sistem Manajemen Kepatuhan Hukum &amp; Regulasi Pertambangan</div></div></div>`; }
+function brand() { return `<div class="brand"><img class="brand-logo" src="./icons/logo-full.png" alt="MyHOMS — Hanwha Orange's Management System" width="720" height="215"></div>`; }
 function kakiAuth() { return `<div class="afoot">HMSI Legal Compliance Management System<br><b class="ver-txt">${teksVersi()}</b> • Mendukung SMKP Minerba Sub Elemen II.3 &amp; V.3</div>`; }
 function layarLogin(pesan, jenis) {
-  tampilAuth(`<div class="acard" id="acard">${brand()}<h2>Masuk ke Akun Anda</h2><p class="lead">Gunakan Nomor Registrasi Pokok (NRP) dan PIN Anda untuk mengakses portal kepatuhan.</p>
-    ${pesan ? `<div class="note ${jenis || 'b'} mb12">${ic(jenis === 'g' ? 'check_circle' : 'info')}<div>${esc(pesan)}</div></div>` : ''}
+  tampilAuth(`<div class="acard" id="acard">${brand()}<h2>Masuk ke Akun Anda</h2>${pesan ? `<div class="note ${jenis || 'b'} mb12">${ic(jenis === 'g' ? 'check_circle' : 'info')}<div>${esc(pesan)}</div></div>` : ''}
     <form id="fLogin" novalidate autocomplete="off">
       <div class="fld"><label for="lNrp">Nomor Registrasi Pokok (NRP)</label><div class="ifield">${ic('badge')}<input class="inp" id="lNrp" name="nrp" inputmode="text" autocapitalize="characters" maxlength="30" placeholder="Contoh: 7320491" required></div></div>
       <div class="fld"><label for="lPin">PIN Keamanan</label><div class="ifield">${ic('lock')}<input class="inp" id="lPin" name="pin" type="password" inputmode="numeric" maxlength="8" placeholder="6 digit angka" required><button type="button" class="eye" data-act="eye" data-for="lPin" aria-label="Tampilkan PIN">${ic('visibility')}</button></div></div>
@@ -616,7 +615,7 @@ function layarLogin(pesan, jenis) {
       <button class="btn p lg blk" type="submit" id="lBtn">Masuk ke Sistem ${ic('arrow_forward')}</button>
       <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><button type="button" class="lnk small" data-act="lupapin">Lupa PIN? Hubungi SHEC Corporate</button><span class="xsmall muted row">${ic('verified_user', 'xs')} Tanpa akun Google</span></div>
     </form>
-    <div class="note b mt16" style="font-size:12px">${ic('schedule')}<div>Percobaan login gagal dibatasi ${esc(cfg('maks_gagal', 5))} kali sebelum akun terkunci ${esc(cfg('kunci_menit', 15))} menit.</div></div>${kakiAuth()}</div>`);
+    ${kakiAuth()}</div>`);
   setTimeout(() => $('#lNrp') && $('#lNrp').focus(), 50);
   $('#fLogin').addEventListener('submit', prosesLogin);
 }
@@ -808,6 +807,10 @@ function donut(id, data, total) {
     el.parentNode.style.background = `radial-gradient(circle,#fff 52%,transparent 53%),conic-gradient(${seg})`; el.parentNode.style.borderRadius = '50%';
   }
 }
+function gaugePk(p, tg) {
+  const C = 2 * Math.PI * 52, v = p == null ? 0 : Math.max(0, Math.min(100, p)), ok = p != null && p >= tg;
+  return `<svg viewBox="0 0 130 130" class="pk-gauge" role="img" aria-label="Tingkat kepatuhan ${p == null ? 'belum ada data' : fpct(p)}"><defs><linearGradient id="gkG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDBA74"/><stop offset="1" stop-color="${ok ? '#16A34A' : '#F37321'}"/></linearGradient></defs><circle cx="65" cy="65" r="52" fill="none" stroke="#EEF0F3" stroke-width="12"/><circle cx="65" cy="65" r="52" fill="none" stroke="url(#gkG)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(C * v / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 65 65)" class="pk-arc"/><text x="65" y="66" text-anchor="middle" class="pk-n">${p == null ? '–' : fpct(p)}</text><text x="65" y="84" text-anchor="middle" class="pk-s">kepatuhan</text></svg>`;
+}
 function legenda(data) { const tot = data.reduce((a, d) => a + d.v, 0); return `<div class="lgd">${data.map(d => `<div class="lgd-i"><i style="background:${d.c}"></i><span>${esc(d.l)}</span><b>${nf(d.v)}</b><span class="muted small" style="flex:0">${fpct(pct(d.v, tot))}</span></div>`).join('')}</div>`; }
 function diffKata(a, b) {
   const A = String(a || '').split(/\s+/).filter(Boolean), B = String(b || '').split(/\s+/).filter(Boolean), n = A.length, m = B.length;
@@ -845,12 +848,11 @@ HAL.dashboard = el => {
     .sort((a, b) => (b.p == null ? -1 : b.p) - (a.p == null ? -1 : a.p));
   const tg = target(), rendah = perSite.filter(x => x.p != null && x.p < tg);
   const periods = Array.from(new Set([periodeAktif(), periodeSebelum(periodeAktif(), 1), periodeSebelum(periodeAktif(), 2)].concat((S.data.evaluasi || []).map(e => e.periode)))).filter(Boolean).sort().reverse();
-  const tabD = S.ui.dash.donut;
-  const DON = {
-    izin: { t: 'Status Izin & Lisensi', c: 'Total Izin', d: [{ l: 'Aktif Berlaku', v: nIz('Aktif'), c: WARNA.g }, { l: `≤ ${ambang()} hari`, v: nIz('Mendekati Kedaluwarsa'), c: WARNA.a }, { l: 'Kedaluwarsa', v: nIz('Kedaluwarsa'), c: WARNA.r }] },
-    eval: { t: 'Hasil Evaluasi ' + labelPeriode(per), c: 'Evaluasi', d: [{ l: 'Compliant', v: evs.filter(e => e.hasil === 'Compliant').length, c: WARNA.g }, { l: 'Non-Compliant', v: evs.filter(e => e.hasil === 'Non-Compliant').length, c: WARNA.r }, { l: 'Pending', v: evs.filter(e => e.hasil === 'Pending').length, c: WARNA.b }, { l: 'N/A', v: evs.filter(e => e.hasil === 'N/A').length, c: WARNA.n }] },
-    rtp: { t: 'Progres RTP', c: 'Total RTP', d: [{ l: 'Open', v: rtps.filter(r => stRtp(r) === 'Open').length, c: WARNA.b }, { l: 'Diajukan', v: rtps.filter(r => stRtp(r) === 'Diajukan').length, c: WARNA.a }, { l: 'Overdue', v: ovd.length, c: WARNA.r }, { l: 'Closed', v: rtps.filter(r => stRtp(r) === 'Closed').length, c: WARNA.g }] }
-  }[tabD];
+  const GR = [
+    { t: 'Status Izin & Lisensi', i: 'verified', n: 'izin', d: [{ l: 'Aktif', v: nIz('Aktif'), c: WARNA.g }, { l: `≤ ${ambang()} hari`, v: nIz('Mendekati Kedaluwarsa'), c: WARNA.a }, { l: 'Kedaluwarsa', v: nIz('Kedaluwarsa'), c: WARNA.r }] },
+    { t: 'Hasil Evaluasi ' + labelPeriode(per), i: 'rule', n: 'evaluasi', d: [{ l: 'Compliant', v: evs.filter(e => e.hasil === 'Compliant').length, c: WARNA.g }, { l: 'Non-Compliant', v: evs.filter(e => e.hasil === 'Non-Compliant').length, c: WARNA.r }, { l: 'Pending', v: evs.filter(e => e.hasil === 'Pending').length, c: WARNA.b }, { l: 'N/A', v: evs.filter(e => e.hasil === 'N/A').length, c: WARNA.n }] },
+    { t: 'Progres RTP', i: 'assignment', n: 'RTP', d: [{ l: 'Open', v: rtps.filter(r => stRtp(r) === 'Open').length, c: WARNA.b }, { l: 'Diajukan', v: rtps.filter(r => stRtp(r) === 'Diajukan').length, c: WARNA.a }, { l: 'Overdue', v: ovd.length, c: WARNA.r }, { l: 'Closed', v: rtps.filter(r => stRtp(r) === 'Closed').length, c: WARNA.g }] }
+  ];
   // Insight otomatis (analisis berbasis aturan dari data lokal)
   const ins = [];
   if (perSite.some(x => x.p != null)) ins.push(rendah.length ? `<b>${rendah.length} site</b> berada di bawah ambang mandatori ${tg}%: ${rendah.map(x => esc(x.s.nama.replace('Site ', '')) + ' (' + fpct(x.p) + ')').join(', ')}.` : `Seluruh site yang dievaluasi memenuhi ambang mandatori ${tg}%.`);
@@ -894,9 +896,9 @@ HAL.dashboard = el => {
       ${rendah.length ? `<div class="note r mt16">${ic('warning')}<div>${rendah.length} site berada di bawah ambang batas mandatori ${tg}% (${rendah.map(x => esc(x.s.nama)).join(', ')}).</div></div>` : ''}</div>
       <div class="card-f"><button class="lnk" data-act="go" data-sec="evaluasi">Buka Analisis Matriks Lengkap ${ic('arrow_forward', 's')}</button></div></div>
     <div class="col" style="gap:16px">
-      <div class="card"><div class="card-h"><div class="sp"><h3>Distribusi Kepatuhan &amp; Izin</h3><p>Status agregat ${S.ui.site === 'ALL' ? 'seluruh site' : esc(namaSite(S.ui.site))}</p></div></div>
-        <div class="card-b"><div class="ptabs mb16" role="tablist">${[['izin', 'Status Izin'], ['eval', 'Hasil Evaluasi'], ['rtp', 'Progres RTP']].map(([k, l]) => `<button class="${tabD === k ? 'on' : ''}" data-act="dash-donut" data-v="${k}">${l}</button>`).join('')}</div>
-        <div class="donut-w"><div class="donut"><canvas id="dnDash" width="180" height="180" aria-label="${esc(DON.t)}" role="img"></canvas><div class="dc"><b>${nf(DON.d.reduce((a, d) => a + d.v, 0))}</b><span>${esc(DON.c)}</span></div></div>${legenda(DON.d)}</div></div></div>
+      <div class="card pk"><div class="card-h"><div class="sp"><h3>Peta Kepatuhan &amp; Perizinan</h3><p>Gambaran agregat ${S.ui.site === 'ALL' ? 'seluruh site' : esc(namaSite(S.ui.site))}</p></div></div>
+        <div class="card-b"><div class="pk-top">${gaugePk(pTot, tg)}<div class="pk-cap"><b>Tingkat kepatuhan ${esc(labelPeriode(per))}</b><span>${nf(ver.length)} evaluasi terverifikasi • ambang mandatori ${tg}%</span><span class="pk-tag ${pTot != null && pTot >= tg ? 'ok' : 'low'}">${pTot == null ? 'Belum ada data' : (pTot >= tg ? 'Memenuhi ambang' : 'Di bawah ambang')}</span></div></div>
+        ${GR.map(g => { const tot = g.d.reduce((x, d) => x + d.v, 0); return `<div class="pk-g"><div class="pk-h"><span class="pk-i">${ic(g.i)}</span><b>${esc(g.t)}</b><span class="pk-t">${nf(tot)} ${esc(g.n)}</span></div><div class="pk-bar" role="img" aria-label="${esc(g.t)}: ${g.d.map(d => d.l + ' ' + d.v).join(', ')}">${tot ? g.d.filter(d => d.v).map(d => `<i class="pk-seg" style="flex:${d.v};background:${d.c}" title="${esc(d.l)}: ${nf(d.v)} (${fpct(pct(d.v, tot))})"></i>`).join('') : '<i class="pk-seg" style="flex:1;background:#E5E7EB"></i>'}</div><div class="pk-lg">${g.d.map(d => `<span><i style="background:${d.c}"></i>${esc(d.l)} <b>${nf(d.v)}</b></span>`).join('')}</div></div>`; }).join('')}</div></div>
       <div class="card"><div class="card-h"><div class="ic">${ic('auto_awesome')}</div><div><h3>Insight Otomatis</h3><p>Analisis aturan dari data terkini</p></div></div><div class="card-b insight"><ul>${ins.map(x => `<li>${ic('arrow_right')}<span>${x}</span></li>`).join('')}</ul></div></div>
     </div>
   </div>
@@ -910,10 +912,8 @@ HAL.dashboard = el => {
       : `<div class="card"><div class="card-h"><div class="ic">${ic('menu_book')}</div><div class="sp"><h3>Regulasi Terbaru di Register 1</h3><p>Diverifikasi SHEC Corporate</p></div></div>
       <div class="tblw"><table class="tbl cards"><thead><tr><th>Regulasi</th><th>Jenis</th><th>Diverifikasi</th></tr></thead><tbody>${reg1.slice().sort((a, b) => String(b.tanggal_verifikasi).localeCompare(a.tanggal_verifikasi)).slice(0, 5).map(r => `<tr class="clk" data-act="go" data-sec="reg1d" data-id="${esc(r.id_reg1)}" tabindex="0"><td data-l="Regulasi"><div class="t1">${esc(judulReg(r))}</div><div class="t2 clamp2">${esc(r.judul)}</div></td><td data-l="Jenis">${pill(r.jenis_peraturan, 'o', false)}</td><td data-l="Tanggal" class="small nowrap">${fmtTgl(r.tanggal_verifikasi)}</td></tr>`).join('')}</tbody></table></div></div>`}
   </div>`;
-  donut('dnDash', DON.d);
 };
 CH.dash = t => { S.ui.dash[t.dataset.k] = t.value; renderSec('dashboard'); };
-ACT['dash-donut'] = t => { S.ui.dash.donut = t.dataset.v; renderSec('dashboard'); };
 ACT['buka-rtp'] = t => { S.ui.tab.evaluasi = 'rtp'; go('evaluasi'); bukaRtp(t.dataset.id); };
 
 function dashPIC(el) {
@@ -1118,7 +1118,7 @@ Object.assign(ACT, {
     if (is(R.CORP)) { go('verifikasi', { id: a.id_antrean }); return; }
     const lampA = lampiran('ANT', a.id_antrean), bolehUnggahA = a.status === 'Menunggu' && a.pengusul === S.me.nrp;
     modal({ title: a.judul, sub: `${a.id_antrean} • ${a.sumber_portal}`, icon: 'policy', size: 'lg', body: `<div class="row wrap mb12">${pill(a.jenis_temuan)} ${pill(a.status)}</div><dl class="dl"><div><dt>Bentuk</dt><dd>${esc(a.bentuk || '–')}</dd></div><div><dt>Nomor / Tahun</dt><dd>${esc(a.nomor)} / ${esc(a.tahun)}</dd></div><div><dt>Diusulkan</dt><dd>${fmtWkt(a.tanggal_ditemukan)}</dd></div><div><dt>Diverifikasi</dt><dd>${a.diverifikasi_oleh ? esc(namaUser(a.diverifikasi_oleh)) + ' • ' + fmtWkt(a.tanggal_verifikasi) : '–'}</dd></div><div class="full"><dt>Catatan verifikasi</dt><dd>${esc(a.catatan_verifikasi || '–')}</dd></div>${a.id_reg1 ? `<div class="full"><dt>Register 1</dt><dd><button class="lnk" data-act="go" data-sec="reg1d" data-id="${esc(a.id_reg1)}">${esc(a.id_reg1)} ${ic('arrow_forward', 's')}</button></dd></div>` : ''}</dl>
-      <div class="fsec"><span class="bar"></span>Naskah PDF &amp; Saran Elemen SMKP</div>
+      <div class="fsec"><span class="bar"></span>Naskah PDF</div>
       <div class="col" style="gap:10px">${daftarBerkas(lampA, { hapus: a.pengusul === S.me.nrp, teksKosong: 'Belum ada naskah PDF terlampir.' })}${bolehUnggahA ? zonaUnggah('ANT', a.id_antrean, a.site_pengusul, 'Tarik & letakkan naskah PDF di sini atau klik untuk memilih') : ''}</div>`, foot: '<button class="btn p" data-act="mclose">Tutup</button>' });
   },
   'ant-dup': async () => {
@@ -1144,10 +1144,11 @@ Object.assign(ACT, {
       ${fld({ n: 'jenis_temuan', l: 'Jenis usulan', t: 'select', opts: ['Baru', 'Perubahan', 'Pencabutan'], v: 'Baru', ph: false })}
       ${fld({ n: 'ringkasan', l: 'Alasan / relevansi', t: 'textarea', rows: 3, full: true, max: 2000, ph: 'Kegiatan site yang terdampak…' })}
       <div class="full">
-        <label>Lampiran naskah PDF <span class="muted" style="font-weight:500">(opsional — untuk saran elemen SMKP otomatis)</span></label>
+        <label>Lampiran naskah PDF <span class="rq">*</span> <span class="muted" style="font-weight:500">(wajib)</span></label>
         <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
           <button type="button" class="btn gh" data-act="usul-pilih-pdf">${ic('attach_file')} Pilih berkas PDF</button>
           <span id="usulFileNama" class="small muted">Belum ada berkas dipilih</span>
+        </div><div class="ferr hide" id="usulFileErr">
         </div>
       </div></form>`,
       foot: `<button class="btn gh" data-act="mclose">Batal</button><button class="btn p" data-act="usul-kirim">${ic('send')} Kirim Usulan</button>` });
@@ -1160,13 +1161,16 @@ Object.assign(ACT, {
       if (c.err) { toast(c.err, 'error'); return; }
       if (c.mime !== 'application/pdf') { toast(`"${f.name}": hanya berkas PDF yang didukung di sini.`, 'error'); return; }
       _usulBerkas = f;
-      const el = $('#usulFileNama'); if (el) el.textContent = `${f.name} (${ukuran(String(f.size))})`;
+      const el = $('#usulFileNama'); if (el) el.textContent = `${f.name} (${ukuran(String(f.size))})`; const er = $('#usulFileErr'); if (er) er.classList.add('hide');
     };
     i.click();
   },
   'usul-kirim': async t => {
     const f = $('#fUsul');
-    if (!validasi(f, x => ({ tahun: /^\d{4}$/.test(x.tahun) ? '' : 'Tahun harus 4 digit.' }))) return;
+    const okForm = validasi(f, x => ({ tahun: /^\d{4}$/.test(x.tahun) ? '' : 'Tahun harus 4 digit.' }));
+    const er = $('#usulFileErr'); if (er) { er.innerHTML = _usulBerkas ? '' : ic('error') + ' Lampiran naskah PDF wajib diunggah.'; er.classList.toggle('hide', !!_usulBerkas); }
+    if (!_usulBerkas) toast('Lampiran naskah PDF wajib diunggah.', 'warning');
+    if (!okForm || !_usulBerkas) return;
     try {
       const res = await kirim('antrean.usul', bacaForm(f), { btn: t, txt: 'Mengirim…' });
       upsert('antrean', 'id_antrean', res.data.antrean);
@@ -1210,7 +1214,7 @@ function hasilVerif(a) {
 function lampiranAntreanCard(a) {
   const lamp = lampiran('ANT', a.id_antrean);
   const bolehUnggah = a.status === 'Menunggu' && (is(R.CORP) || a.pengusul === S.me.nrp);
-  return `<div class="card"><div class="card-h"><div class="ic">${ic('picture_as_pdf')}</div><div class="sp"><h3>Berkas Naskah (PDF) &amp; Saran Elemen SMKP</h3><p>Unggah naskah resmi PDF untuk mendapat saran elemen SMKP otomatis (informasional — bukan AI/LLM, pencocokan kata kunci lokal)</p></div></div>
+  return `<div class="card"><div class="card-h"><div class="ic">${ic('picture_as_pdf')}</div><div class="sp"><h3>Berkas Naskah (PDF)</h3><p>Naskah resmi peraturan dalam format PDF</p></div></div>
     <div class="card-b col" style="gap:12px">${daftarBerkas(lamp, { hapus: is(R.CORP) || a.pengusul === S.me.nrp, teksKosong: 'Belum ada naskah PDF terlampir.' })}${bolehUnggah ? zonaUnggah('ANT', a.id_antrean, a.site_pengusul, 'Tarik & letakkan naskah PDF di sini atau klik untuk memilih') : ''}
     </div></div>`;
 }
@@ -1321,7 +1325,7 @@ HAL.reg1 = el => {
         { l: 'Berlaku untuk', r: r => `<div class="small">${esc(namaSite(r.site_berlaku))}</div>` },
         { l: 'Status', r: r => aktif(r) ? pill(r.status_berlaku) : pill('Arsip', 'n') }
       ] })}</div>
-    <div class="card info mt16"><div class="card-b row wrap" style="gap:12px">${ic('sync', 't-b')}<div class="sp" style="min-width:240px"><b>Integrasi Google Sheets &amp; SMKP Minerba Element II.3</b><div class="small muted2">Register 1 tersimpan di spreadsheet master SHEC Corporate (terpisah dari MY HOMS). Data disinkronkan otomatis setiap ada perubahan.</div></div>${is(R.CORP, R.SITE, R.MGT) ? `<button class="btn" data-act="go" data-sec="audit">${ic('history')} Log Audit Trail</button>` : ''}<button class="btn p" data-act="muatulang">${ic('sync')} Paksa Sinkronisasi</button></div></div>`;
+    <div class="row wrap mt16" style="gap:10px;justify-content:flex-end">${is(R.CORP, R.SITE, R.MGT) ? `<button class="btn" data-act="go" data-sec="audit">${ic('history')} Log Audit Trail</button>` : ''}<button class="btn p" data-act="muatulang">${ic('sync')} Paksa Sinkronisasi</button></div>`;
   el.innerHTML = hdr({
     crumbs: [['Register Kepatuhan', 'reg1'], ['Register 1 — Peraturan & Standar']], title: 'Register 1 — Peraturan &amp; Standar', tag: 'Edisi ' + labelPeriode(periodeAktif()),
     sub: 'Daftar induk regulasi hukum, standar teknis pertambangan, dan perizinan lingkungan yang telah diverifikasi SHEC Corporate.',
@@ -1535,7 +1539,7 @@ HAL.reg2 = el => {
         { l: 'Sisa Hari', r: selSisa },
         { l: '', cls: 'act', r: r => can.reg2Edit(r) && !r._tmp ? `<button class="btn sm ${stIzin(r) === 'Kedaluwarsa' ? 'd' : 't'}" data-act="perpanjang" data-id="${esc(r.id_izin)}">${ic('autorenew')} Perpanjang</button>` : '' }
       ] })}</div>
-    <div class="note b mt16">${ic('info')}<div><b>Klausul Kepatuhan SMKP Minerba &amp; OHSAS:</b> alat berat atau instalasi tanpa riksa uji/SILO aktif wajib dihentikan operasinya (DTI/Red Tagged). Ajukan perpanjangan lisensi paling lambat H-45 sebelum jatuh tempo.</div></div>`;
+`;
 };
 Object.assign(ACT, {
   'r2-buka': t => go('reg2d', { id: t.dataset.id }),
@@ -1607,9 +1611,9 @@ Object.assign(ACT, {
     const tmpId = id || uid('tmpI');
     tutupModal();
     kirim('reg2.simpan', v, {
-      apply: () => { upsert('reg2', 'id_izin', Object.assign({}, v, { id_izin: tmpId, status_aktif: 'Active', _tmp: !id, created_at: new Date().toISOString().slice(0, 19).replace('T', ' ') })); if (dariEval && S.ui.ef) { S.ui.ef.izin = tmpId; const h = $('[name=id_izin]', $('#efForm')); if (h) h.value = tmpId; PARTIAL.efIzin(); } },
-      sukses: res => { gantiId('reg2', 'id_izin', tmpId, res.data.reg2); S.idx = null; if (dariEval && S.ui.ef && S.ui.ef.izin === tmpId) { S.ui.ef.izin = res.data.reg2.id_izin; const h = $('[name=id_izin]', $('#efForm')); if (h) h.value = S.ui.ef.izin; PARTIAL.efIzin(); } },
-      gagal: () => setTimeout(() => { if (dariEval && S.ui.ef && S.ui.ef.izin === tmpId) { S.ui.ef.izin = ''; PARTIAL.efIzin(); } formReg2(id ? Object.assign({}, I().reg2[id] || {}, v) : null, id ? null : Object.assign({}, v, { dariEval: !!dariEval })); }, 50)
+      apply: () => { upsert('reg2', 'id_izin', Object.assign({}, v, { id_izin: tmpId, status_aktif: 'Active', _tmp: !id, created_at: new Date().toISOString().slice(0, 19).replace('T', ' ') })); if (dariEval && S.ui.ef) { S.ui.ef.izin.push(tmpId); const h = $('[name=id_izin]', $('#efForm')); if (h) h.value = S.ui.ef.izin.join(','); PARTIAL.efIzin(); } },
+      sukses: res => { gantiId('reg2', 'id_izin', tmpId, res.data.reg2); S.idx = null; if (dariEval && S.ui.ef) { const L = S.ui.ef.izin, i = L.indexOf(tmpId); if (i >= 0) { L[i] = res.data.reg2.id_izin; const h = $('[name=id_izin]', $('#efForm')); if (h) h.value = L.join(','); PARTIAL.efIzin(); } } },
+      gagal: () => setTimeout(() => { if (dariEval && S.ui.ef) { S.ui.ef.izin = S.ui.ef.izin.filter(x => x !== tmpId); PARTIAL.efIzin(); } formReg2(id ? Object.assign({}, I().reg2[id] || {}, v) : null, id ? null : Object.assign({}, v, { dariEval: !!dariEval })); }, 50)
     }).catch(() => { });
   },
   'reg2-arsip': async t => {
@@ -1705,7 +1709,7 @@ function tabEval(evs, per) {
         { l: 'Verifikasi', r: e => pill(e.status_verifikasi) },
         { l: '', cls: 'act', r: e => can.evalVerif(e) ? `<button class="btn sm gn" data-act="ev-buka" data-id="${esc(e.id_evaluasi)}">${ic('verified')} Verifikasi</button>` : (can.evalEdit(e) ? `<button class="btn sm" data-act="ev-buka" data-id="${esc(e.id_evaluasi)}">${ic('edit')} Ubah</button>` : '') }
       ] })}</div>
-    <div class="card tint mt16"><div class="card-b row wrap" style="gap:14px"><div class="ic" style="width:40px;height:40px;border-radius:10px;background:#fff;color:var(--o-d);display:flex;align-items:center;justify-content:center">${ic('gavel')}</div><div class="sp" style="min-width:260px"><b>Mandatori Klausul SMKP Minerba Sub Elemen II.3 &amp; V.3</b><div class="small muted2">Evaluasi kepatuhan hukum dilaksanakan minimal setiap semester. Temuan Non-Compliant wajib ditindaklanjuti dengan RTP. Status RTP Closed tidak otomatis mengubah hasil evaluasi menjadi Compliant.</div></div>${is(R.CORP, R.SITE, R.MGT) ? `<button class="btn" data-act="go" data-sec="audit">${ic('history')} Log Validasi SHEC</button>` : ''}</div></div>`;
+    ${is(R.CORP, R.SITE, R.MGT) ? `<div class="row mt16" style="justify-content:flex-end"><button class="btn" data-act="go" data-sec="audit">${ic('history')} Log Validasi SHEC</button></div>` : ''}`;
 }
 ACT['ev-hasil'] = t => { const st = tst('ev'); st.hasil = st.hasil === t.dataset.v ? 'ALL' : t.dataset.v; st.page = 1; renderSec('evaluasi'); };
 ACT['eval-buat-kw'] = t => go('evalform', { kw: t.dataset.id, site: t.dataset.site, per: t.dataset.per });
@@ -1828,7 +1832,7 @@ HAL.evalform = (el, p) => {
     return;
   }
   const per0 = e ? e.periode : (p.per && /^\d{4}-S[12]$/.test(p.per) ? p.per : periodeAktif());
-  S.ui.ef = { kunci: p.id || 'baru', id: e ? e.id_evaluasi : '', files: [], hasil: e ? e.hasil : '', kw: kwAwal, izin: e ? (e.id_izin || '') : '' };
+  S.ui.ef = { kunci: p.id || 'baru', id: e ? e.id_evaluasi : '', files: [], hasil: e ? e.hasil : '', kw: kwAwal, izin: e ? String(e.id_izin || '').split(',').filter(Boolean) : [] };
   const rtpAda = e ? (I().rtpByEv[e.id_evaluasi] || []) : [];
   const ro = !edit;
   const segH = `<div class="seg" role="radiogroup" aria-label="Hasil evaluasi" id="efHasil">${HASIL.map(h => `<button type="button" role="radio" aria-checked="${S.ui.ef.hasil === h}" class="${S.ui.ef.hasil === h ? 'on ' : ''}${{ Compliant: 'g', 'Non-Compliant': 'r', Pending: 'b', 'N/A': 'n' }[h]}" data-act="ef-hasil" data-v="${h}" ${ro ? 'disabled' : ''}>${ic({ Compliant: 'check_circle', 'Non-Compliant': 'cancel', Pending: 'schedule', 'N/A': 'block' }[h], 's')} ${h}</button>`).join('')}</div>`;
@@ -1853,8 +1857,8 @@ HAL.evalform = (el, p) => {
       <div class="fld" data-f="hasil"><label>Hasil evaluasi<span class="rq">*</span></label>${segH}<input type="hidden" name="hasil" value="${esc(S.ui.ef.hasil)}"><div class="ferr hide"></div></div>
       ${fld({ n: 'temuan', l: 'Temuan / alasan / justifikasi', t: 'textarea', rows: 3, v: e ? e.temuan : '', full: true, ro, max: 3000, ph: 'Non-Compliant: uraikan temuan — ini menjadi tindakan perbaikan (RTP). Pending: tulis alasan belum selesai. N/A: justifikasi.' })}
     </div></div>
-    <div class="card hide" id="efIzinCard" style="border-left:3px solid var(--o)"><div class="card-h"><div class="ic">${ic('verified')}</div><div class="sp"><h3>Pilih Izin / Lisensi dari Register 2</h3><p>Bukti pasal ini berupa izin/lisensi. Hanya dokumen milik ${esc(namaSite(site0))} yang ditampilkan • izin kedaluwarsa tidak dapat dipakai untuk Compliant</p></div><span class="pill r" id="efIzinWajib">${ic('priority_high')} wajib</span></div>
-      <div class="card-b col" style="gap:10px"><div id="efIzinList" class="col" style="gap:8px" role="radiogroup" aria-label="Izin/lisensi"></div><input type="hidden" name="id_izin" value="${esc(S.ui.ef.izin)}"><div class="ferr hide" id="efIzinErr"></div>${ro ? '' : `<button type="button" class="add-row" data-act="ef-izin-baru">${ic('add')} Daftarkan izin/lisensi baru</button>`}</div></div>
+    <div class="card hide" id="efIzinCard" style="border-left:3px solid var(--o)"><div class="card-h"><div class="ic">${ic('verified')}</div><div class="sp"><h3>Pilih Izin / Lisensi dari Register 2</h3><p>Centang <b>semua</b> izin/lisensi yang relevan (mis. KIM tiap orang). Hanya dokumen milik ${esc(namaSite(site0))} yang ditampilkan • semua yang dipilih harus berlaku untuk Compliant</p></div><span class="pill r" id="efIzinWajib">${ic('priority_high')} wajib</span></div>
+      <div class="card-b col" style="gap:10px"><div id="efIzinList" class="col" style="gap:8px" role="group" aria-label="Izin/lisensi"></div><input type="hidden" name="id_izin" value="${esc(S.ui.ef.izin.join(','))}"><div class="ferr hide" id="efIzinErr"></div>${ro ? '' : `<button type="button" class="add-row" data-act="ef-izin-baru">${ic('add')} Daftarkan izin/lisensi baru</button>`}</div></div>
     <div class="card" id="efBuktiCard"><div class="card-h"><div class="ic">${ic('folder_open')}</div><div class="sp"><h3>Evidence / Bukti Objektif</h3><p>Wajib untuk hasil Compliant • disimpan di 03_Evidence_Evaluasi/${esc(labelPeriode(per0))}</p></div><span class="pill r ${S.ui.ef.hasil === 'Compliant' ? '' : 'hide'}" id="efWajib">${ic('priority_high')} wajib</span></div>
       <div class="card-b col" style="gap:12px"><div id="efBukti"></div>${ro ? '' : `<div class="drop" data-act="ef-file" data-drop="1" data-ent="EVALQ" role="button" tabindex="0"><div class="dic">${ic('cloud_upload')}</div>Tarik &amp; letakkan evidence atau klik untuk memilih<small>PDF, JPG, PNG, Excel • Maks. ${esc(cfg('maks_upload_mb', 10))} MB • ${e ? 'langsung diunggah' : 'diunggah setelah evaluasi disimpan'}</small></div>`}</div></div>
     <div class="card hide" id="efTindak" style="border-left:3px solid var(--r)"><div class="card-h"><div class="ic" id="efTindakIc" style="background:var(--r-t);color:var(--r)">${ic('assignment')}</div><div class="sp"><h3 id="efTindakJ"></h3><p id="efTindakP"></p></div></div>
@@ -1894,7 +1898,7 @@ PARTIAL.efIzin = () => {
   const f = $('#efForm'), site = ($('[name=site]', f) || {}).value, kw = I().kw[ef.kw] || {};
   const ro = ef.id && !can.evalEdit(I().ev[ef.id] || {});
   const list = (S.data.reg2 || []).filter(r => aktif(r) && r.site === site).sort((a, b) => ((b.id_reg1 === kw.id_reg1) - (a.id_reg1 === kw.id_reg1)) || String(a.nama_dokumen).localeCompare(b.nama_dokumen));
-  c.innerHTML = list.length ? list.map(r => { const on = ef.izin === r.id_izin, st = stIzin(r); return `<button type="button" class="file izpick ${on ? 'on' : ''}" role="radio" aria-checked="${on}" data-act="ef-izin" data-id="${esc(r.id_izin)}" ${ro ? 'disabled' : ''}><div class="fic">${ic(on ? 'radio_button_checked' : 'radio_button_unchecked')}</div><div class="fn"><b>${esc(r.nama_dokumen)}</b><span>${esc(r.nomor_dokumen || '–')} • ${r.tanggal_kedaluwarsa ? 'berlaku s.d. ' + fmtTgl(r.tanggal_kedaluwarsa) : 'tanpa masa berlaku'}</span></div>${pill(st)}</button>`; }).join('') : '<div class="muted small">Belum ada izin/lisensi terdaftar untuk site ini. Daftarkan izin barunya dengan tombol di bawah.</div>';
+  c.innerHTML = list.length ? list.map(r => { const on = ef.izin.includes(r.id_izin), st = stIzin(r); return `<button type="button" class="file izpick ${on ? 'on' : ''}" role="checkbox" aria-checked="${on}" data-act="ef-izin" data-id="${esc(r.id_izin)}" ${ro ? 'disabled' : ''}><div class="fic">${ic(on ? 'check_box' : 'check_box_outline_blank')}</div><div class="fn"><b>${esc(r.nama_dokumen)}</b><span>${esc(r.nomor_dokumen || '–')} • ${r.tanggal_kedaluwarsa ? 'berlaku s.d. ' + fmtTgl(r.tanggal_kedaluwarsa) : 'tanpa masa berlaku'}</span></div>${pill(st)}</button>`; }).join('') : '<div class="muted small">Belum ada izin/lisensi terdaftar untuk site ini. Daftarkan izin barunya dengan tombol di bawah.</div>';
 };
 PARTIAL.evalform = () => {
   const b = $('#efBukti'); if (!b || !S.ui.ef) return;
@@ -1927,7 +1931,7 @@ Object.assign(ACT, {
   },
   'ef-file': () => pilihBerkas(antreBerkasEval),
   'ef-file-hapus': t => { S.ui.ef.files.splice(Number(t.dataset.i), 1); PARTIAL.evalform(); },
-  'ef-izin': t => { S.ui.ef.izin = S.ui.ef.izin === t.dataset.id ? '' : t.dataset.id; const h = $('[name=id_izin]', $('#efForm')); if (h) h.value = S.ui.ef.izin; const er = $('#efIzinErr'); if (er) er.classList.add('hide'); PARTIAL.efIzin(); },
+  'ef-izin': t => { const L = S.ui.ef.izin, i = L.indexOf(t.dataset.id); if (i >= 0) L.splice(i, 1); else L.push(t.dataset.id); const h = $('[name=id_izin]', $('#efForm')); if (h) h.value = L.join(','); const er = $('#efIzinErr'); if (er) er.classList.add('hide'); PARTIAL.efIzin(); },
   'ef-izin-baru': () => {
     const ef = S.ui.ef, kw = I().kw[ef.kw] || {}, site = ($('[name=site]', $('#efForm')) || {}).value;
     formReg2(null, { site, id_reg1: kw.id_reg1, nama_dokumen: kw.bukti_wajib || '', pic_nrp: S.me.nrp, dariEval: true });
@@ -1958,7 +1962,7 @@ async function simpanEval(kirimV, btn) {
   const f = $('#efForm'), ef = S.ui.ef;
   const e = ef.id ? I().ev[ef.id] : null, kw = I().kw[ef.kw] || {}, izinKw = kw.butuh_izin === 'Ya';
   const nBukti = (ef.id ? lampiran('EVAL', ef.id).length : 0) + ef.files.length;
-  const izinPilih = izinKw && ef.izin ? (I().reg2[ef.izin] || null) : null;
+  const izinPilih = izinKw ? ef.izin.map(x => I().reg2[x]).filter(Boolean) : [];
   const ok = validasi(f, x => {
     const tdk = x.hasil === 'Non-Compliant' || x.hasil === 'Pending';
     return {
@@ -1972,12 +1976,12 @@ async function simpanEval(kirimV, btn) {
   const v = bacaForm(f);
   if (kirimV && v.hasil === 'Compliant') {
     if (izinKw) {
-      if (!izinPilih) { const er = $('#efIzinErr'); if (er) { er.innerHTML = ic('error') + ' Pilih izin/lisensi dari Register 2 atau daftarkan yang baru.'; er.classList.remove('hide'); } toast('Pilih izin/lisensi sebagai bukti.', 'warning'); return; }
-      if (stIzin(izinPilih) === 'Kedaluwarsa') { toast('Izin/lisensi yang dipilih sudah kedaluwarsa. Perpanjang dulu di Register 2.', 'warning'); return; }
+      if (!izinPilih.length) { const er = $('#efIzinErr'); if (er) { er.innerHTML = ic('error') + ' Pilih izin/lisensi dari Register 2 atau daftarkan yang baru.'; er.classList.remove('hide'); } toast('Pilih izin/lisensi sebagai bukti.', 'warning'); return; }
+      const mati = izinPilih.filter(z => stIzin(z) === 'Kedaluwarsa'); if (mati.length) { toast(`Izin/lisensi kedaluwarsa: ${mati.map(z => z.nama_dokumen).join(', ')}. Semua izin yang dipilih harus berlaku — perpanjang dulu di Register 2.`, 'warning'); return; }
     } else if (!nBukti) { toast('Evidence wajib dilampirkan untuk hasil Compliant.', 'warning'); return; }
   }
   v.site = v.site || (e ? e.site : '');
-  v.id_izin = izinKw && v.hasil === 'Compliant' ? (ef.izin || '') : '';
+  v.id_izin = izinKw && v.hasil === 'Compliant' ? ef.izin.join(',') : '';
   if (v.hasil !== 'Non-Compliant' && v.hasil !== 'Pending') v.tanggal_tindak_lanjut = '';
   const duaLangkah = kirimV && ef.files.length > 0;
   busy(btn, true, kirimV ? 'Mengirim…' : 'Menyimpan…');
