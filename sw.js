@@ -1,7 +1,7 @@
 /* Service Worker HMSI-LCMS. Naikkan VERSI_CACHE setiap kali berkas statis berubah. */
-const VERSI_CACHE = 'hmsi-lcms-v2.1.0';
+const VERSI_CACHE = 'hmsi-lcms-v2.1.1';
 const STATIS = ['./', './index.html', './css/style.css', './js/config.js', './js/pwa.js', './js/app.js',
-  './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png'];
+  './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/logo-full.png', './icons/logo-mark.png', './icons/favicon-32.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSI_CACHE).then(c => c.addAll(STATIS)));
