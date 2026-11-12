@@ -67,7 +67,7 @@ function ukuran(b) { b = Number(b || 0); return b >= 1048576 ? (b / 1048576).toF
 function inisial(n) { return String(n || '?').replace(/^(ir|dr|drs)\.?\s+/i, '').split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0]).join('').toUpperCase(); }
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 const uid = p => (p || 'tmp') + '-' + Math.random().toString(36).slice(2, 9);
-function labelPeriode(p) { const m = String(p || '').match(/^(\d{4})-S([12])$/); return m ? `Semester ${m[2] === '1' ? 'I' : 'II'} ${m[1]}` : (p || '–'); }
+function labelPeriode(p) { if (/^\d{4}$/.test(String(p || ''))) return `Tahun ${p} (Smt I + II)`; const m = String(p || '').match(/^(\d{4})-S([12])$/); return m ? `Semester ${m[2] === '1' ? 'I' : 'II'} ${m[1]}` : (p || '–'); }
 function autoPeriode() { const d = new Date(); return d.getFullYear() + (d.getMonth() < 6 ? '-S1' : '-S2'); }
 function periodeSebelum(p, n) { let [y, s] = p.split('-S').map(Number); for (let i = 0; i < n; i++) { if (s === 2) s = 1; else { s = 2; y--; } } return y + '-S' + s; }
 function lsGet(k, d) { try { const v = localStorage.getItem('lcms_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
@@ -181,7 +181,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.1.3';
+const APP_UI_VERSI = '2.1.4';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -563,8 +563,7 @@ function renderChrome() {
   const u = S.me; if (!u) return;
   const nmApp = cfg('nama_aplikasi', 'HMSI-LCMS');
   $('#sbNama').textContent = /^HMSI-LCMS$/i.test(nmApp) ? 'MyHOMS' : nmApp;
-  const logo = cfg('logo_url', '');
-  $('#sbLogo').innerHTML = `<img src="${/^https:\/\//.test(logo) ? esc(logo) : LOGO.mark}" alt="MyHOMS">`;
+  $('#sbLogo').innerHTML = `<img src="${LOGO.mark}" alt="MyHOMS">`;
   ['#sbAv', '#tbAv'].forEach(s => { $(s).textContent = inisial(u.nama); });
   $('#sbUNama').textContent = u.nama; $('#tbUNama').textContent = u.nama;
   const hm = $('.tb-crumb .hm'); if (hm) hm.innerHTML = esc(ROLE_LABEL[u.role] || u.role) + '&nbsp;/&nbsp;';
@@ -888,14 +887,10 @@ HAL.dashboard = el => {
   izin.forEach(r => { const s = sisaHari(r.tanggal_kedaluwarsa); if (s != null && s <= 30) tindak.push({ k: 'Izin', ic: 'verified', t: r.nama_dokumen, s2: r.nomor_dokumen, site: r.site, pic: r.pic_nrp, w: s, sisa: s < 0 ? `Kedaluwarsa ${-s} hari` : `H-${s}`, st: s < 0 ? 'Kedaluwarsa' : 'Mendekati Kedaluwarsa', sec: 'reg2d', id: r.id_izin }); });
   rtps.forEach(r => { const st = stRtp(r); if (st === 'Closed') return; const s = selisih(today(), r.due_date); if (s != null && s <= 3) tindak.push({ k: 'RTP', ic: 'assignment', t: r.tindakan_perbaikan, s2: r.id_rtp, site: r.site, pic: r.pic_nrp, w: s, sisa: s < 0 ? `Terlambat ${-s} hari` : (s === 0 ? 'Hari ini' : `H-${s}`), st, sec: 'rtp', id: r.id_rtp }); });
   tindak.sort((a, b) => a.w - b.w);
-  const heroOn = is(R.CORP, R.SITE);
   el.innerHTML = `
   <div class="hb"><div class="hb-t"><span class="hb-hi">Selamat Datang,</span><h2>${esc(S.me.nama)}</h2><div class="hb-tag">MyHOMS Legal Compliance</div>
     <div class="hb-chips"><span>${ic('badge', 'xs')} ${esc(ROLE_LABEL[S.me.role] || S.me.role)}</span><span>${ic('location_on', 'xs')} ${esc(namaSite(S.me.site))}</span><span>${ic('calendar_today', 'xs')} ${esc(labelPeriode(per))}</span></div></div>
     <div class="hb-g">${gaugePk(pTot, tg)}<div class="hb-gc"><b>Tingkat kepatuhan</b><span>${nf(ver.length)} evaluasi terverifikasi</span><span class="pk-tag ${pTot != null && pTot >= tg ? 'ok' : 'low'}">${pTot == null ? 'Belum ada data' : (pTot >= tg ? 'Memenuhi ambang ' + tg + '%' : 'Di bawah ambang ' + tg + '%')}</span></div></div></div>
-  ${heroOn ? `<div class="hero"><div class="hic">${ic('travel_explore', 'l')}</div><div style="flex:1;min-width:240px"><h2>Pencarian Regulasi Otomatis (Portal Pemerintah) <span class="tag">${ic('smart_toy', 'xs')} Bot Aktif</span></h2>
-    <p>Pemeriksaan otomatis terakhir: <b>${S.stat.portalTerakhir ? fmtWkt(S.stat.portalTerakhir) + ' WIB' : 'belum pernah'}</b>${is(R.CORP) ? ` • <b class="t-o">${antM.length} regulasi baru/berubah</b> memerlukan validasi Corporate SHEC.` : '. Usulkan regulasi tambahan bila diperlukan.'}</p></div>
-    <div class="ha">${is(R.CORP) ? `<button class="btn" data-act="go" data-sec="pencarian" data-tab="antrean">${ic('fact_check')} Lihat Antrean Verifikasi (${antM.length})</button><button class="btn p" data-act="go" data-sec="pencarian" data-tab="cari">${ic('travel_explore')} Cari Sekarang (Manual)</button>` : `<button class="btn p" data-act="usul">${ic('add_circle')} Usulkan Regulasi</button>`}</div></div>` : ''}
   <div class="card mb16"><div class="fbar" style="border:0">
     <span class="flbl row">${ic('tune', 's')} FILTER LINGKUP:</span>
     <select class="inp" style="width:auto" data-ch="dash" data-k="periode" aria-label="Periode">${opsi(periods.map(p => [p, labelPeriode(p) + (p === periodeAktif() ? ' (Aktif)' : '')]), per)}</select>
@@ -2044,7 +2039,7 @@ function dataLaporan(j, f) {
   const sOk = s => !f.site || f.site === 'ALL' || s === 'ALL' || String(s || '').split(',').includes(f.site);
   const dOk = d => !f.dept || f.dept === 'ALL' || d === f.dept;
   const stOk = s => !f.status || f.status === 'ALL' || s === f.status;
-  const evs = (S.data.evaluasi || []).filter(e => aktif(e) && e.periode === f.periode && sOk(e.site) && dOk((I().kw[e.id_kewajiban] || {}).departemen_penanggung_jawab));
+  const evs = (S.data.evaluasi || []).filter(e => aktif(e) && (/^\d{4}$/.test(f.periode) ? String(e.periode || '').startsWith(f.periode + '-') : e.periode === f.periode) && sOk(e.site) && dOk((I().kw[e.id_kewajiban] || {}).departemen_penanggung_jawab));
   const ver = evs.filter(e => e.status_verifikasi === 'Terverifikasi'), c = h => ver.filter(e => e.hasil === h).length;
   const rtps = (S.data.rtp || []).filter(r => aktif(r) && sOk(r.site));
   const ringEv = [['Evaluasi Terverifikasi', nf(ver.length)], ['Tingkat Kepatuhan', fpct(pct(c('Compliant'), ver.length - c('N/A')))], ['Non-Compliant', nf(c('Non-Compliant'))], ['RTP Aktif / Overdue', `${rtps.filter(r => r.status_rtp !== 'Closed').length} / ${rtps.filter(r => stRtp(r) === 'Overdue').length}`]];
@@ -2076,7 +2071,8 @@ function dataLaporan(j, f) {
 HAL.laporan = el => {
   const st = S.ui.lap || (S.ui.lap = { jenis: 'SMKP', periode: periodeAktif(), dept: 'ALL', status: 'ALL', site: S.ui.site });
   const L = dataLaporan(st.jenis, st), J = LAP[st.jenis];
-  const periods = Array.from(new Set([periodeAktif(), periodeSebelum(periodeAktif(), 1), periodeSebelum(periodeAktif(), 2)].concat((S.data.evaluasi || []).map(e => e.periode)))).sort().reverse();
+  const periods0 = Array.from(new Set([periodeAktif(), periodeSebelum(periodeAktif(), 1), periodeSebelum(periodeAktif(), 2)].concat((S.data.evaluasi || []).map(e => e.periode)))).sort().reverse();
+  const periods = Array.from(new Set(periods0.map(x => x.slice(0, 4)))).sort().reverse().flatMap(y => [y].concat(periods0.filter(x => x.startsWith(y))));
   const warna = { Compliant: 't-g', 'Non-Compliant': 't-r', Kedaluwarsa: 't-r', Overdue: 't-r', 'Mendekati Kedaluwarsa': 't-a', Closed: 't-g', Pending: 't-b' };
   const riw = (S.data.laporan || []).slice().sort((a, b) => String(b.waktu).localeCompare(a.waktu));
   const filter = { periode: st.periode, site: st.site, departemen: st.dept, status: st.status };
@@ -2084,7 +2080,7 @@ HAL.laporan = el => {
     + `<div class="grid g-37" style="align-items:start"><div class="col" style="gap:10px"><div class="flbl row">${ic('grid_view', 's')} PILIH JENIS LAPORAN</div>
       ${Object.keys(LAP).filter(k => k !== 'EXEC' || is(R.CORP)).map(k => `<button class="rcard ${st.jenis === k ? 'on' : ''}" data-act="lap-jenis" data-v="${k}"><div class="ic">${ic(LAP[k].ic)}</div><div style="flex:1;min-width:0"><div class="row"><b class="sp">${esc(LAP[k].t)}</b>${st.jenis === k ? ic('check_circle', 's t-o') : ''}</div><span>${esc(LAP[k].d)}</span><div class="mt8">${pill(LAP[k].tag, 'n', false)}</div></div></button>`).join('')}
       <div class="note b">${ic('info')}<div><b>Validasi lampiran SMKP:</b> persentase kepatuhan dihitung dari evaluasi terverifikasi (Compliant ÷ (Terverifikasi − N/A)).</div></div></div>
-    <div class="col" style="gap:16px"><div class="card"><div class="card-h"><div class="ic">${ic('tune')}</div><div class="sp"><h3>Parameter Dokumen Laporan</h3><p>${esc(J.t)}</p></div><span class="sync-dot"><i></i>Koneksi Google Sheets aktif</span></div><div class="card-b">
+    <div class="col" style="gap:16px"><div class="card"><div class="card-h"><div class="ic">${ic('tune')}</div><div class="sp"><h3>Parameter Dokumen Laporan</h3><p>${esc(J.t)}</p></div></div><div class="card-b">
       <div class="grid g4">${fld({ n: 'periode', l: 'Periode audit', t: 'select', opts: periods.map(p => [p, labelPeriode(p)]), v: st.periode, ph: false, ch: 'lap' })}${fld({ n: 'site', l: 'Cakupan operasional', t: 'select', opts: [['ALL', 'Semua site']].concat(siteList().map(s => [s.kode, s.nama])), v: st.site, ph: false, ch: 'lap' })}${fld({ n: 'dept', l: 'Departemen / divisi', t: 'select', opts: [['ALL', 'Semua departemen']].concat(deptList().map(d => [d.kode, d.nama])), v: st.dept, ph: false, ch: 'lap' })}${fld({ n: 'status', l: 'Klasifikasi status', t: 'select', opts: [['ALL', 'Semua status']].concat(STATUS_LAP[st.jenis]), v: st.status, ph: false, ch: 'lap', ro: !STATUS_LAP[st.jenis].length })}</div>
       <div class="row wrap mt16"><span class="sp small muted">${nf(L.baris.length)} baris data • ${esc(labelPeriode(st.periode))} • ${esc(namaSite(st.site))}</span>
         <button class="btn" data-act="lap-buat" data-f="xlsx">${ic('table_view')} Ekspor Excel (.xlsx)</button><button class="btn p" data-act="lap-buat" data-f="pdf">${ic('picture_as_pdf')} Ekspor PDF Resmi</button></div></div></div>
@@ -2300,7 +2296,7 @@ Object.assign(ACT, {
   }
 });
 const PARAM = [
-  ['Identitas Aplikasi', 'badge', [['nama_aplikasi', 'Nama aplikasi'], ['nama_perusahaan', 'Nama perusahaan (laporan resmi)'], ['logo_url', 'URL logo (https, opsional)']]],
+  ['Identitas Aplikasi', 'badge', [['nama_aplikasi', 'Nama aplikasi'], ['nama_perusahaan', 'Nama perusahaan (laporan resmi)']]],
   ['Kepatuhan & Pengingat', 'notifications_active', [['periode_aktif', 'Periode evaluasi aktif (mis. 2026-S2, kosong = otomatis)'], ['target_kepatuhan', 'Ambang batas kepatuhan (%)'], ['ambang_hari', 'Ambang "Mendekati Kedaluwarsa" (hari)'], ['tahap_pengingat', 'Tahap pengingat izin (hari, pisahkan koma)'], ['hari_pengingat_rtp', 'Pengingat RTP sebelum due date (hari)'], ['jadwal_portal', 'Jadwal pemeriksaan portal (informasi)'], ['email_notifikasi_aktif', 'Email notifikasi otomatis (Izin, RTP, Antrean, Kewajiban, Evaluasi)']]],
   ['Keamanan Sesi & Login', 'shield_lock', [['idle_menit', 'Sesi berakhir bila idle (menit)'], ['sesi_jam', 'Masa berlaku sesi maksimum (jam)'], ['maks_gagal', 'PIN salah sebelum akun terkunci'], ['kunci_menit', 'Lama penguncian (menit)']]],
   ['Sistem & Kuota', 'settings', [['maks_upload_mb', 'Batas ukuran unggahan (MB)'], ['kuota_urlfetch', 'Kuota UrlFetch harian akun pemilik']]]
