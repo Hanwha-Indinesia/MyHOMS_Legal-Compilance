@@ -181,7 +181,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.1.5';
+const APP_UI_VERSI = '2.1.7';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -896,7 +896,7 @@ HAL.dashboard = el => {
     <select class="inp" style="width:auto" data-ch="dash" data-k="periode" aria-label="Periode">${opsi(periods.map(p => [p, labelPeriode(p) + (p === periodeAktif() ? ' (Aktif)' : '')]), per)}</select>
     ${siteList().length > 1 ? `<select class="inp" style="width:auto" data-ch="site-global" aria-label="Site project"><option value="ALL">${mySites() ? 'Semua Site Saya' : 'Semua Site Project'}</option>${opsi(siteList().map(x => [x.kode, x.nama]), S.ui.site)}</select>` : ''}
     <select class="inp" style="width:auto" data-ch="dash" data-k="dept" aria-label="Departemen"><option value="ALL">Semua Departemen</option>${opsi(deptList().map(d => [d.kode, d.nama]), dep)}</select>
-    <span class="sp"></span><span class="sync-dot"><i></i>Google Sheets tersinkron</span>
+    
     ${is(R.CORP, R.SITE, R.PJO, R.MGT) ? `<button class="btn" data-act="go" data-sec="laporan">${ic('download')} Ekspor PDF/Excel</button>` : ''}
   </div></div>
   <div class="grid g6 kpis mb16">
