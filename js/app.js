@@ -181,7 +181,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.1.9';
+const APP_UI_VERSI = '2.2.0';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -738,6 +738,7 @@ Object.assign(ACT, {
   laporan: t => buatLaporan(t.dataset.j, t.dataset.f || 'xlsx', { site: S.ui.site, periode: t.dataset.p || '' }, t)
 });
 Object.assign(CH, {
+  'site-non': t => { S.ui.siteNon = t.checked; rerender(true); },
   'site-global': t => { S.ui.site = t.value; lsSet('site', t.value); const gs = $('#siteSel'); if (gs) gs.value = t.value; Object.values(S.ui.tbl).forEach(s => { s.page = 1; }); rerender(); },
   per: t => { const st = tst(t.dataset.t); st.per = Number(t.value); st.page = 1; lsSet('per', st.per); renderSec(S.ui.sec); },
   flt: t => { const st = tst(t.dataset.t); st[t.dataset.k] = t.type === 'checkbox' ? t.checked : t.value; st.page = 1; renderSec(S.ui.sec); }
@@ -2199,23 +2200,39 @@ Object.assign(ACT, {
   'pin-kirim': t => kirim('user.kirimPin', { nrp: t.dataset.nrp, pin: S.ui.pinSem }, { btn: t, txt: 'Mengirim…' }).catch(() => { })
 });
 function setMaster(tabel) {
-  const key = tabel === 'Sites' ? 'sites' : 'departemen', rows = (S.data[key] || []).slice().sort((a, b) => String(a.kode).localeCompare(b.kode));
-  return `<div class="card"><div class="card-h"><div class="sp"><h3>${tabel === 'Sites' ? 'Site Operasional' : 'Departemen'} (${rows.length})</h3><p>Data master tidak dihapus — nonaktifkan bila tidak digunakan.</p></div><button class="btn p" data-act="m-form" data-t="${tabel}">${ic('add')} Tambah</button></div>
+  const key = tabel === 'Sites' ? 'sites' : 'departemen', semuaRows = (S.data[key] || []).slice().sort((a, b) => String(a.kode).localeCompare(b.kode));
+  const nNon = semuaRows.filter(x => x.status === 'Nonaktif').length, tampilNon = tabel !== 'Sites' || !!S.ui.siteNon;
+  const rows = tampilNon ? semuaRows : semuaRows.filter(x => x.status !== 'Nonaktif');
+  const sub = tabel === 'Sites' ? 'Site yang sudah punya data hanya bisa dinonaktifkan. Site Nonaktif tanpa data bisa dihapus permanen.' : 'Data master tidak dihapus — nonaktifkan bila tidak digunakan.';
+  const tgl = tabel === 'Sites' && nNon ? `<label class="small" style="display:inline-flex;align-items:center;gap:6px;margin-right:10px;cursor:pointer"><input type="checkbox" data-ch="site-non" ${S.ui.siteNon ? 'checked' : ''}> Tampilkan nonaktif (${nNon})</label>` : '';
+  return `<div class="card"><div class="card-h"><div class="sp"><h3>${tabel === 'Sites' ? 'Site Operasional' : 'Departemen'} (${rows.length})</h3><p>${sub}</p></div>${tgl}<button class="btn p" data-act="m-form" data-t="${tabel}">${ic('add')} Tambah</button></div>
     ${tabel === 'Sites' ? tabel_m(rows, tabel, [{ l: 'Kode', r: s => `<span class="idc">${esc(s.kode)}</span>` }, { l: 'Nama Site', r: s => `<b>${esc(s.nama)}</b>` }, { l: 'Wilayah', r: s => esc(s.wilayah || '–') }, { l: 'Lokasi', r: s => `<span class="small muted">${esc(s.lokasi || '–')}</span>` }, { l: 'Status', r: s => pill(s.status) }])
       : tabel_m(rows, tabel, [{ l: 'Kode', r: s => `<span class="idc">${esc(s.kode)}</span>` }, { l: 'Nama Departemen', r: s => `<b>${esc(s.nama)}</b>` }, { l: 'Status', r: s => pill(s.status) }])}</div>`;
 }
-function tabel_m(rows, t, cols) { return tabel('m' + t, { key: 'kode', rows, semua: true, cols: cols.concat([{ l: '', cls: 'act', r: s => `<button class="btn gh ic sm" data-act="m-form" data-t="${t}" data-id="${esc(s.kode)}" aria-label="Ubah">${ic('edit')}</button>` }]) }); }
+function tabel_m(rows, t, cols) { return tabel('m' + t, { key: 'kode', rows, semua: true, cols: cols.concat([{ l: '', cls: 'act', r: s => `<button class="btn gh ic sm" data-act="m-form" data-t="${t}" data-id="${esc(s.kode)}" aria-label="Ubah">${ic('edit')}</button>${t === 'Sites' && s.status === 'Nonaktif' ? `<button class="btn gh ic sm" data-act="m-hapus" data-id="${esc(s.kode)}" aria-label="Hapus permanen" title="Hapus permanen">${ic('delete')}</button>` : ''}` }]) }); }
 Object.assign(ACT, {
   'm-form': t => {
     const tb = t.dataset.t, key = tb === 'Sites' ? 'sites' : 'departemen', s = t.dataset.id ? (S.data[key] || []).find(x => x.kode === t.dataset.id) : { status: 'Aktif' };
-    modal({ title: (t.dataset.id ? 'Ubah ' : 'Tambah ') + (tb === 'Sites' ? 'Site' : 'Departemen'), icon: tb === 'Sites' ? 'apartment' : 'domain', body: `<form id="fM" class="frm" novalidate>${fld({ n: 'kode', l: 'Kode', v: s.kode, req: true, max: 20, ro: !!t.dataset.id, ph: 'Contoh: TBG' })}${fld({ n: 'status', l: 'Status', t: 'select', opts: ['Aktif', 'Nonaktif'], v: s.status, ph: false })}${fld({ n: 'nama', l: 'Nama', v: s.nama, req: true, full: true, max: 120 })}${tb === 'Sites' ? fld({ n: 'wilayah', l: 'Wilayah / provinsi', v: s.wilayah, max: 80 }) + fld({ n: 'lokasi', l: 'Lokasi / keterangan', v: s.lokasi, max: 200 }) : ''}</form>`,
-      foot: `<button class="btn gh" data-act="mclose">Batal</button><button class="btn p" data-act="m-simpan" data-t="${tb}" data-baru="${t.dataset.id ? 0 : 1}">${ic('save')} Simpan</button>` });
+    modal({ title: (t.dataset.id ? 'Ubah ' : 'Tambah ') + (tb === 'Sites' ? 'Site' : 'Departemen'), icon: tb === 'Sites' ? 'apartment' : 'domain', body: `<form id="fM" class="frm" novalidate>${fld({ n: 'kode', l: 'Kode', v: s.kode, req: true, max: 20, ro: !!t.dataset.id && tb !== 'Sites', ph: 'Contoh: TBG' })}${fld({ n: 'status', l: 'Status', t: 'select', opts: ['Aktif', 'Nonaktif'], v: s.status, ph: false })}${fld({ n: 'nama', l: 'Nama', v: s.nama, req: true, full: true, max: 120 })}${tb === 'Sites' ? fld({ n: 'wilayah', l: 'Wilayah / provinsi', v: s.wilayah, max: 80 }) + fld({ n: 'lokasi', l: 'Lokasi / keterangan', v: s.lokasi, max: 200 }) : ''}</form>`,
+      foot: `<button class="btn gh" data-act="mclose">Batal</button><button class="btn p" data-act="m-simpan" data-t="${tb}" data-baru="${t.dataset.id ? 0 : 1}" data-lama="${esc(t.dataset.id || '')}">${ic('save')} Simpan</button>` });
+  },
+  'm-hapus': async t => {
+    const kode = t.dataset.id, st = (S.data.sites || []).find(x => x.kode === kode); if (!st) return;
+    const ya = await konfirmasi({ title: 'Hapus permanen site ' + kode + '?', msg: st.nama + ' akan dihapus dan tidak bisa dikembalikan. Hanya berhasil bila site belum punya data.', danger: true, icon: 'delete', ok: 'Ya, hapus' });
+    if (!ya) return;
+    kirim('master.hapus', { kode }, { btn: t, txt: '…', sukses: () => { const arr = S.data.sites || []; const i = arr.findIndex(r => r.kode === kode); if (i >= 0) arr.splice(i, 1); renderChrome(); rerender(true); } }).catch(() => { });
   },
   'm-simpan': t => {
     const f = $('#fM'); if (!validasi(f, x => ({ kode: /^[A-Za-z0-9\-]{2,20}$/.test(x.kode) ? '' : 'Kode 2–20 karakter huruf/angka.' }))) return;
     const v = bacaForm(f); v.kode = v.kode.toUpperCase(); v.tabel = t.dataset.t; v.baru = t.dataset.baru === '1';
     const key = v.tabel === 'Sites' ? 'sites' : 'departemen';
     tutupModal();
+    const lamaKode = t.dataset.lama || '';
+    if (lamaKode && lamaKode !== v.kode) {
+      v.kodeLama = lamaKode;
+      kirim('master.simpan', v, { sukses: res => { const arr = S.data[key] || []; const i = arr.findIndex(r => r.kode === lamaKode); if (i >= 0) arr.splice(i, 1); upsert(key, 'kode', Object.assign({ kode: v.kode, nama: v.nama, status: v.status, wilayah: v.wilayah, lokasi: v.lokasi }, (res.data && res.data.rec) || {})); renderChrome(); rerender(true); } }).catch(() => { });
+      return;
+    }
     kirim('master.simpan', v, { apply: () => upsert(key, 'kode', { kode: v.kode, nama: v.nama, status: v.status, wilayah: v.wilayah, lokasi: v.lokasi }), sukses: () => renderChrome() }).catch(() => { });
   }
 });
