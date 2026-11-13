@@ -1,5 +1,5 @@
 /* Service Worker HMSI-LCMS. Naikkan VERSI_CACHE setiap kali berkas statis berubah. */
-const VERSI_CACHE = 'hmsi-lcms-v2.1.8';
+const VERSI_CACHE = 'hmsi-lcms-v2.1.9';
 const STATIS = ['./', './index.html', './css/style.css', './js/config.js', './js/pwa.js', './js/app.js',
   './manifest.json', './icons/myhoms-192.png', './icons/myhoms-512.png', './icons/myhoms-maskable-512.png', './icons/logo-full.png', './icons/logo-mark.png', './icons/myhoms-32.png', './icons/myhoms-apple-180.png'];
 
