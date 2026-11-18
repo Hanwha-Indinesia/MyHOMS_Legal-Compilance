@@ -181,7 +181,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.2.0';
+const APP_UI_VERSI = '2.2.1';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -1600,7 +1600,9 @@ HAL.reg2d = (el, p) => {
 function formReg2(r, pre) {
   const baru = !r, pic = is(R.PIC);
   r = r || Object.assign({ jenis_dokumen: 'Izin', site: S.ui.site !== 'ALL' ? S.ui.site : (mySites() || [''])[0] }, pre || {});
-  const users = (S.data.users || []).filter(u => u.status === 'Aktif').map(u => [u.nrp, `${u.nama} (${u.nrp}) — ${ROLE_LABEL[u.role] || u.role}`]);
+  // Akun Site hanya melihat pengguna dari site-nya sendiri; Corporate melihat semua
+  const sc = is(R.SITE) ? mySites() : null;
+  const users = (S.data.users || []).filter(u => u.status === 'Aktif' && (!sc || (u.role !== R.CORP && u.role !== R.MGT && String(u.site || '').split(',').map(x => x.trim()).some(x => sc.includes(x))) || u.nrp === r.pic_nrp)).map(u => [u.nrp, `${u.nama} (${u.nrp}) — ${ROLE_LABEL[u.role] || u.role}`]);
   modal({ title: baru ? 'Tambah Izin / Lisensi / Sertifikasi' : 'Ubah ' + r.id_izin, sub: baru ? 'Status masa berlaku dihitung otomatis dari tanggal kedaluwarsa.' : r.nama_dokumen, icon: 'verified', size: 'lg',
     body: `<form id="fReg2" class="frm" novalidate>
       <div class="fsec"><span class="bar"></span>Data Dokumen</div>
