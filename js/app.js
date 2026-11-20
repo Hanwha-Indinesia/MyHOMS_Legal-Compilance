@@ -13,7 +13,7 @@
 
 /* ───────────── KONSTANTA ───────────── */
 const R = { CORP: 'SHEC_CORPORATE', SITE: 'SHEC_SITE', PIC: 'PIC', PJO: 'PJO', MGT: 'MANAJEMEN' };
-const ROLE_LABEL = { SHEC_CORPORATE: 'SHEC Corporate', SHEC_SITE: 'SHEC Site', PIC: 'PIC Departemen', PJO: 'PJO / Area Manager', MANAJEMEN: 'Manajemen Corporate' };
+const ROLE_LABEL = { SHEC_CORPORATE: 'SHEC Corporate', SHEC_SITE: 'SHEC Site', PIC: 'PIC Departemen', PJO: 'PJO', MANAJEMEN: 'Manajemen Corporate' };
 const JENIS = ['ESDM', 'K3', 'Lingkungan', 'SNI', 'SKKNI', 'Ketenagakerjaan', 'Lainnya'];
 const BENTUK = ['Undang-Undang', 'Peraturan Pemerintah', 'Peraturan Presiden', 'Peraturan Menteri', 'Keputusan Menteri', 'Keputusan Dirjen', 'Peraturan Daerah', 'Instruksi', 'Surat Edaran', 'SNI', 'SKKNI', 'Standar', 'Lainnya'];
 const METODE = ['Pemeriksaan Dokumen', 'Observasi Lapangan', 'Wawancara', 'Pengukuran', 'Uji Laboratorium'];
@@ -181,7 +181,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.2.1';
+const APP_UI_VERSI = '2.2.2';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -1542,6 +1542,7 @@ HAL.reg2 = el => {
       ${kpi({ label: 'Total Izin & Lisensi', value: nf(base.length), unit: 'total', icon: 'description', sub: `${ic('inventory_2', 'xs')} 100% tercatat terpusat`, act: 'reg2-st', v: 'ALL', sel: st.st === 'ALL' })}
     </div>
     <div class="card"><div class="fbar"><div class="srch">${ic('search')}<input class="inp" id="r2Q" data-in="q" data-t="reg2" value="${esc(st.q)}" placeholder="Cari nama dokumen, nomor izin, pemegang, PIC…" aria-label="Cari izin"></div>
+      ${siteList().length > 1 ? `<select class="inp" data-ch="site-global" aria-label="Site project"><option value="ALL">${mySites() ? 'Semua Site Saya' : 'Semua Site Project'}</option>${opsi(siteList().map(x => [x.kode, x.nama]), S.ui.site)}</select>` : ''}
       <select class="inp" data-ch="flt" data-t="reg2" data-k="jenis" aria-label="Jenis dokumen">${opsi([['ALL', 'Semua jenis dokumen'], 'Izin', 'Lisensi', 'Sertifikasi'], st.jenis)}</select>
       <select class="inp" data-ch="flt" data-t="reg2" data-k="dept" aria-label="Departemen">${opsi([['ALL', 'Semua departemen']].concat(deptList().map(d => [d.kode, d.nama])), st.dept)}</select>
       <select class="inp" data-ch="flt" data-t="reg2" data-k="st" aria-label="Status">${opsi([['ALL', 'Semua status'], 'Aktif', 'Mendekati Kedaluwarsa', 'Kedaluwarsa', 'Tanpa Masa Berlaku'], st.st)}</select></div>
