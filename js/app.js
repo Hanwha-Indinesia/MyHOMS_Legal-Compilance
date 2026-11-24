@@ -182,7 +182,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.3.1';
+const APP_UI_VERSI = '2.3.2';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -2389,11 +2389,12 @@ function cariKar() {
   const st = karSt(), q = st.q.trim();
   if (q.length < 2) { st.hasil = null; st.muat = false; st.err = ''; renderSec('karyawan', true); return; }
   st.muat = true;
-  api('karyawan.cari', { q }).then(res => { if (karSt().q.trim() !== q) return; st.hasil = res.data; st.err = ''; st.info = { jumlah: res.data.jumlah, sinkronTerakhir: res.data.sinkronTerakhir }; })
+  api('karyawan.cari', { q, nonaktif: !!st.nonaktif }).then(res => { if (karSt().q.trim() !== q) return; st.hasil = res.data; st.err = ''; st.info = { jumlah: res.data.jumlah, sinkronTerakhir: res.data.sinkronTerakhir }; })
     .catch(e => { if (karSt().q.trim() !== q) return; st.hasil = null; st.err = e.message; })
     .finally(() => { if (karSt().q.trim() === q) st.muat = false; if (S.ui.sec === 'karyawan') renderSec('karyawan', true); });
 }
 const cariKarTunda = debounce(cariKar, 350);
+CH['kar-nonaktif'] = t => { karSt().nonaktif = t.checked; cariKar(); };
 IN['kar-q'] = t => { karSt().q = t.value; cariKarTunda(); };
 function muatProfilKar() {
   const st = karSt(), nrp = st.nrp; st.muatP = true; st.errP = '';
@@ -2413,10 +2414,10 @@ HAL.karyawan = el => {
   else if (st.err) isi = kosong('error', 'Pencarian gagal', st.err);
   else if (!h || (st.muat && !h.rows.length)) isi = '<div class="card-b">' + '<div class="sk sk-l"></div>'.repeat(4) + '</div>';
   else if (!h.rows.length) isi = kosong('search_off', 'Tidak ditemukan', 'Coba kata lain, atau periksa kewenangan site Anda.');
-  else isi = `<div class="tblw"><table class="tbl cards"><thead><tr><th>Nama</th><th>NRP</th><th>Jabatan</th><th>Departemen</th><th>Site</th><th></th></tr></thead><tbody>${h.rows.map(k => `<tr class="click" data-act="kar-buka" data-nrp="${esc(k.nrp)}"><td data-l="Nama"><div class="t1">${esc(k.nama)}</div></td><td data-l="NRP" class="mono">${esc(k.nrp_orange || k.nrp)}</td><td data-l="Jabatan">${esc(k.jabatan || '–')}</td><td data-l="Departemen">${esc(k.departemen || '–')}</td><td data-l="Site">${esc(namaSite(k.site) || '–')}</td><td>${k.status === 'Tidak ada di Orange' ? pill('Tidak ada di Orange', 'a') : ''}</td></tr>`).join('')}</tbody></table></div>
+  else isi = `<div class="tblw"><table class="tbl cards"><thead><tr><th>Nama</th><th>NRP</th><th>Jabatan</th><th>Departemen</th><th>Site</th><th></th></tr></thead><tbody>${h.rows.map(k => `<tr class="click" data-act="kar-buka" data-nrp="${esc(k.nrp)}"><td data-l="Nama"><div class="t1">${esc(k.nama)}</div></td><td data-l="NRP" class="mono">${esc(k.nrp_orange || k.nrp)}</td><td data-l="Jabatan">${esc(k.jabatan || '–')}</td><td data-l="Departemen">${esc(k.departemen || '–')}</td><td data-l="Site">${esc(namaSite(k.site) || '–')}</td><td>${k.nonaktif ? pill(k.status === 'Tidak ada di Orange' ? 'Tidak ada di Orange' : 'Nonaktif', 'a') : ''}</td></tr>`).join('')}</tbody></table></div>
       <div class="pg"><span>Menampilkan <b>${nf(h.rows.length)}</b> dari <b>${nf(h.total)}</b> hasil${h.total > h.rows.length ? ' — persempit pencarian' : ''}${st.muat ? ' • <span class="spin s"></span> memuat…' : ''}</span></div>`;
   el.innerHTML = hdr({ title: 'Personal Compliance', tag: 'Karyawan', sub: 'Cari karyawan untuk melihat lisensi, sertifikasi, dan training yang dimiliki. ' + esc(ket), actions: aksi })
-    + `<div class="card"><div class="fbar"><div class="srch">${ic('search')}<input class="inp" id="karQ" data-in="kar-q" value="${esc(st.q)}" placeholder="Cari nama, NRP, atau jabatan…" aria-label="Cari karyawan" autocomplete="off"></div></div>${isi}</div>`;
+    + `<div class="card"><div class="fbar"><div class="srch">${ic('search')}<input class="inp" id="karQ" data-in="kar-q" value="${esc(st.q)}" placeholder="Cari nama, NRP, atau jabatan…" aria-label="Cari karyawan" autocomplete="off"></div><label class="small" style="display:flex;gap:6px;align-items:center;white-space:nowrap"><input type="checkbox" data-ch="kar-nonaktif" ${st.nonaktif ? 'checked' : ''}> Tampilkan nonaktif</label></div>${isi}</div>`;
 };
 function renderProfilKar(el, st) {
   if (!st.profil && !st.muatP && !st.errP) muatProfilKar();
