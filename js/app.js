@@ -182,7 +182,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.3.0';
+const APP_UI_VERSI = '2.3.1';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -1611,7 +1611,7 @@ function formReg2(r, pre) {
       ${fld({ n: 'jenis_dokumen', l: 'Jenis dokumen', t: 'select', opts: ['Izin', 'Lisensi', 'Sertifikasi'], v: r.jenis_dokumen, req: true, ph: false })}${fld({ n: 'nomor_dokumen', l: 'Nomor dokumen', v: r.nomor_dokumen, req: true, max: 120 })}
       ${fld({ n: 'nama_dokumen', l: 'Nama dokumen', v: r.nama_dokumen, req: true, full: true, max: 300, ph: 'Contoh: Suket Riksa Uji Crane Mobile 50T' })}
       ${fld({ n: 'objek', l: 'Objek / unit / personel', v: r.objek, max: 300 })}${fld({ n: 'nama_pemegang', l: 'Nama pemegang', v: r.nama_pemegang, req: true, max: 200 })}
-      ${fld({ n: 'nrp_pemegang', l: 'NRP pemegang (opsional)', v: r.nrp_pemegang, max: 30, full: true, ro: pic, help: 'Isi bila dokumen ini milik karyawan, agar tampil di Personal Compliance. Contoh: HMSI-188.' })}
+      ${fld({ n: 'nrp_pemegang', l: 'NRP pemegang', v: r.nrp_pemegang, max: 30, full: true, ro: pic, help: 'Wajib untuk Lisensi dan Sertifikasi (agar tampil di Personal Compliance). Kosongkan hanya untuk jenis Izin. Contoh: HMSI-188.' })}
       ${fld({ n: 'lembaga_penerbit', l: 'Lembaga penerbit / PJK3', v: r.lembaga_penerbit, max: 200 })}${fld({ n: 'id_reg1', l: 'Dasar hukum (Register 1)', t: 'select', opts: (S.data.reg1 || []).filter(aktif).map(x => [x.id_reg1, x.id_reg1 + ' — ' + judulReg(x)]), v: r.id_reg1, ph: '— Opsional —' })}
       <div class="fsec"><span class="bar"></span>Lokasi &amp; Penanggung Jawab</div>
       ${fld({ n: 'site', l: 'Site', t: 'select', opts: siteList().map(s => [s.kode, s.nama]), v: r.site, req: true, ro: pic || !!(pre && pre.dariEval) })}${fld({ n: 'departemen', l: 'Departemen', t: 'select', opts: deptList().map(d => [d.kode, d.nama]), v: r.departemen, req: true, ro: pic })}
@@ -1624,7 +1624,7 @@ function formReg2(r, pre) {
 Object.assign(ACT, {
   'reg2-simpan': t => {
     const f = $('#fReg2');
-    if (!validasi(f, x => ({ tanggal_kedaluwarsa: x.tanggal_kedaluwarsa && x.tanggal_kedaluwarsa < x.tanggal_terbit ? 'Tidak boleh sebelum tanggal terbit.' : '' }))) return;
+    if (!validasi(f, x => ({ tanggal_kedaluwarsa: x.tanggal_kedaluwarsa && x.tanggal_kedaluwarsa < x.tanggal_terbit ? 'Tidak boleh sebelum tanggal terbit.' : '', nrp_pemegang: !is(R.PIC) && x.jenis_dokumen !== 'Izin' && !String(x.nrp_pemegang || '').trim() ? 'Wajib diisi untuk Lisensi dan Sertifikasi.' : '' }))) return;
     const v = bacaForm(f), id = t.dataset.id;
     if (is(R.PIC) && id) { const r = I().reg2[id]; v.site = r.site; v.departemen = r.departemen; v.pic_nrp = r.pic_nrp; }
     const dariEval = t.dataset.eval === '1' && S.ui.ef;
@@ -2357,7 +2357,7 @@ HAL.audit = el => {
   el.innerHTML = hdr({ crumbs: [['Pengaturan Sistem', is(R.CORP) ? 'pengaturan' : 'dashboard'], ['Log Audit Keamanan']], title: 'Riwayat Perubahan &amp; Log Audit Keamanan', tag: 'Audit_Log', sub: 'Jejak siapa, kapan, dan apa yang diubah di seluruh register. Nilai PIN dan rahasia tidak pernah dicatat.', actions: `<button class="btn" data-act="aud-ulang">${ic('refresh')} Muat Ulang</button>` })
     + `<div class="card"><div class="fbar"><div class="srch">${ic('search')}<input class="inp" id="audQ" data-in="aud-q" value="${esc(st.q)}" placeholder="Cari NRP, nama, ID record, ringkasan…" aria-label="Cari log"></div>
       <select class="inp" data-ch="aud" data-k="modul" aria-label="Modul">${opsi([['', 'Semua modul']].concat(MODUL), st.modul)}</select>
-      <select class="inp" data-ch="aud" data-k="aksi" aria-label="Aksi">${opsi([['', 'Semua aksi'], 'LOGIN', 'LOGIN_GAGAL', 'AKUN_TERKUNCI', 'TAMBAH', 'UBAH', 'ARSIP', 'VERIFIKASI', 'RESET_PIN', 'GANTI_PIN', 'EKSPOR', 'UNGGAH', 'LIHAT_PROFIL', 'SINKRON_KARYAWAN'], st.aksi)}</select>
+      <select class="inp" data-ch="aud" data-k="aksi" aria-label="Aksi">${opsi([['', 'Semua aksi'], 'LOGIN', 'LOGIN_GAGAL', 'AKUN_TERKUNCI', 'TAMBAH', 'UBAH', 'ARSIP', 'VERIFIKASI', 'RESET_PIN', 'GANTI_PIN', 'EKSPOR', 'UNGGAH', 'LIHAT_PROFIL', 'SINKRON_KARYAWAN', 'IMPOR_MATRIKS'], st.aksi)}</select>
       <input class="inp" type="date" style="width:auto" data-ch="aud" data-k="dari" value="${esc(st.dari)}" aria-label="Dari tanggal"><input class="inp" type="date" style="width:auto" data-ch="aud" data-k="sampai" value="${esc(st.sampai)}" aria-label="Sampai tanggal"></div>
       ${!d || st.muat && !d.rows.length ? '<div class="card-b">' + '<div class="sk sk-l"></div>'.repeat(6) + '</div>' : (d.err ? kosong('error', 'Log gagal dimuat', d.err) : `<div class="tblw"><table class="tbl cards"><thead><tr><th>Waktu</th><th>Pengguna</th><th>Aksi</th><th>Modul</th><th>ID Record</th><th>Ringkasan</th><th></th></tr></thead><tbody>${d.rows.length ? d.rows.map((a, i) => { const k = a.waktu + a.nrp + i, adaDiff = a.nilai_baru && a.nilai_baru !== '{}', buka = st.buka.has(k); return `<tr><td data-l="Waktu" class="nowrap small mono">${esc(a.waktu)}</td><td data-l="Pengguna"><div class="t1">${esc(a.nama)}</div><div class="t2">NRP ${esc(a.nrp)} • ${esc(ROLE_LABEL[a.role] || a.role)}</div></td><td data-l="Aksi">${pill(a.aksi.replace(/_/g, ' '), aksiV(a.aksi), false)}</td><td data-l="Modul" class="small">${esc(a.modul)}</td><td data-l="ID" class="mono xsmall">${esc(a.id_record || '–')}</td><td data-l="Ringkasan" class="small"><div class="clamp2" style="max-width:340px">${esc(a.ringkasan)}</div></td><td data-l="" class="act">${adaDiff ? `<button class="btn gh ic sm" data-act="aud-buka" data-k="${esc(k)}" aria-expanded="${buka}" aria-label="Lihat perubahan">${ic(buka ? 'expand_less' : 'expand_more')}</button>` : ''}</td></tr>${buka ? `<tr><td colspan="7" data-l="" style="background:var(--sf2)">${diffAudit(a)}</td></tr>` : ''}`; }).join('') : `<tr><td colspan="7" data-l="">${kosong('history', 'Tidak ada log', 'Ubah filter pencarian.')}</td></tr>`}</tbody></table></div>
       <div class="pg"><span>Total <b>${nf(d.total)}</b> entri${d.terbatas ? ' (5.000 entri terbaru)' : ''}${st.muat ? ' • <span class="spin s"></span> memuat…' : ''}</span><span class="sp"></span><button data-act="aud-hal" data-p="${st.hal - 1}" ${st.hal <= 1 ? 'disabled' : ''} aria-label="Sebelumnya">${ic('chevron_left', 's')}</button><span>Halaman ${st.hal} dari ${pages}</span><button data-act="aud-hal" data-p="${st.hal + 1}" ${st.hal >= pages ? 'disabled' : ''} aria-label="Berikutnya">${ic('chevron_right', 's')}</button></div>`)}</div>`;
@@ -2406,7 +2406,7 @@ HAL.karyawan = el => {
   if (st.nrp) return renderProfilKar(el, st);
   muatInfoKar();
   const info = st.info, q = st.q.trim(), h = st.hasil;
-  const aksi = is(R.CORP) ? `<button class="btn" data-act="kar-sinkron">${ic('sync')} Sinkron Karyawan</button>` : '';
+  const aksi = is(R.CORP) ? `<button class="btn" data-act="kar-matriks">${ic('verified')} Impor Matriks</button><button class="btn" data-act="kar-sinkron">${ic('sync')} Sinkron Karyawan</button>` : '';
   const ket = info ? (info.jumlah ? `${nf(info.jumlah)} karyawan dapat Anda cari${info.sinkronTerakhir ? ' • data Orange per ' + fmtWkt(info.sinkronTerakhir) : ''}.` : (is(R.CORP) ? 'Belum ada data karyawan. Klik "Sinkron Karyawan" untuk mengambil data dari database Orange.' : 'Belum ada data karyawan. Minta SHEC Corporate menjalankan sinkron karyawan.')) : 'Memuat…';
   let isi;
   if (q.length < 2) isi = kosong('badge', 'Cari karyawan', 'Ketik minimal 2 huruf nama, NRP, atau jabatan.');
@@ -2433,11 +2433,33 @@ function renderProfilKar(el, st) {
   const ti = p.trainingInternal;
   const tTrn = p.trainingError ? kosong('cloud_off', 'Training internal belum dapat dimuat', p.trainingError)
     : (ti && ti.length ? `<div class="tblw"><table class="tbl cards"><thead><tr><th>Training</th><th>Tahun</th><th>Tanggal</th><th>Jenis</th><th>Skor</th></tr></thead><tbody>${ti.map(t => `<tr><td data-l="Training"><div class="t1">${esc(t.training)}</div></td><td data-l="Tahun">${esc(t.tahun || '–')}</td><td data-l="Tanggal">${esc(t.tanggal || '–')}</td><td data-l="Jenis">${esc(t.jenis || '–')}</td><td data-l="Skor">${esc(t.skor || '–')}</td></tr>`).join('')}</tbody></table></div>` : kosong('workspace_premium', 'Belum ada riwayat training internal', 'Data training dibaca dari MyHOMS Orange.'));
+  const ini = String(k.nama || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
+  const foto = `<div class="pfl-foto"><span>${esc(ini)}</span>${p.foto ? `<img src="${esc(p.foto)}" alt="Foto ${esc(k.nama)}" onerror="this.remove()">` : ''}</div>`;
+  const cl = (ikon, jdl, sub, isi, aksi) => `<div class="card"><div class="card-h"><div class="ic">${ic(ikon)}</div><div class="sp"><h3>${jdl}</h3>${sub ? `<p>${sub}</p>` : ''}</div>${aksi || ''}</div>${isi}</div>`;
+  const ring = (a, b) => b ? `<span class="small muted">${nf(a)} dari ${nf(b)} terpenuhi</span>` : '';
+  // Matriks kompetensi (eksternal)
+  const me = p.matriksEksternal || {}, isAdm = is(R.CORP);
+  let isiME;
+  if (me.kosong) isiME = kosong('verified', 'Matriks kompetensi belum diimpor', isAdm ? 'Klik "Impor Matriks" di halaman pencarian Personal Compliance.' : 'Minta SHEC Corporate mengimpor matriks kompetensi.');
+  else if (!me.ditemukan) isiME = kosong('info', 'Jabatan belum ada di matriks', `Jabatan "${esc(k.jabatan || '–')}" belum terdaftar di matriks kompetensi, atau memang tidak mewajibkan sertifikat.`);
+  else {
+    const sv = { 'Terpenuhi': 'g', 'Kedaluwarsa': 'r', 'Belum ada': 'a' };
+    isiME = `<div class="tblw"><table class="tbl cards"><thead><tr><th>Sertifikat wajib</th><th>Status</th><th>Dokumen</th><th>Berlaku s.d.</th></tr></thead><tbody>${me.item.map(x => `<tr${x.id_izin ? ` class="click" data-act="r2-buka" data-id="${esc(x.id_izin)}"` : ''}><td data-l="Sertifikat"><div class="t1">${esc(x.sertifikat)}</div></td><td data-l="Status">${pill(x.status, sv[x.status] || 'n')}</td><td data-l="Dokumen">${esc(x.nama_dokumen || '–')}</td><td data-l="Berlaku s.d.">${x.tanggal_kedaluwarsa ? fmtTgl(x.tanggal_kedaluwarsa) : (x.id_izin ? 'Tanpa batas' : '–')}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  // Matriks training internal
+  const mi = p.matriksInternal;
+  let isiMI;
+  if (p.matriksInternalError || p.trainingError) isiMI = kosong('cloud_off', 'Matriks training internal belum dapat dimuat', p.matriksInternalError || p.trainingError);
+  else if (!mi || !mi.ditemukan) isiMI = kosong('info', 'Jabatan belum ada di matriks training', `Jabatan "${esc(k.jabatan || '–')}" belum terdaftar di matriks training internal (TNA Head Office).`);
+  else if (!mi.total) isiMI = `<div class="card-b"><div class="note a">${ic('info')}<div class="small">Matriks untuk jabatan ini ditemukan, tetapi daftar modulnya belum dapat dibaca. Mohon kirim potongan ini ke pengembang: <span class="mono">${esc(mi.contohFormat || '(kosong)')}</span></div></div></div>`;
+  else isiMI = `<div class="tblw"><table class="tbl cards"><thead><tr><th>Modul training</th><th>Status</th><th>Tanggal / Tahun</th><th>Skor</th></tr></thead><tbody>${mi.modul.map(x => `<tr><td data-l="Modul"><div class="t1">${esc(x.modul)}</div></td><td data-l="Status">${pill(x.status, x.status === 'Sudah' ? 'g' : 'a')}</td><td data-l="Tanggal">${esc(x.tanggal || x.tahun || '–')}</td><td data-l="Skor">${esc(x.skor || '–')}</td></tr>`).join('')}</tbody></table></div>`;
   el.innerHTML = hdr({ crumbs: [['Personal Compliance', 'karyawan'], [k.nama]], title: esc(k.nama), tag: k.nrp_orange || k.nrp, sub: 'Data identitas dari MyHOMS Orange (hanya-baca)' + (p.sinkron ? ', per ' + fmtWkt(p.sinkron) : '') + '.', actions: back })
-    + `<div class="card"><div class="card-h"><div class="ic">${ic('badge')}</div><div class="sp"><h3>Identitas</h3></div></div><div class="card-b"><dl class="dl">${dl('Nama', esc(k.nama))}${dl('NRP', esc(k.nrp_orange || k.nrp))}${dl('Jabatan', esc(k.jabatan || '–'))}${dl('Departemen', esc(k.departemen || '–'))}${dl('Site Project', esc(namaSite(k.site) || '–'))}${dl('Kategori', esc(k.kategori || '–'))}${k.status === 'Tidak ada di Orange' ? dl('Status', pill('Tidak ada di Orange', 'a')) : ''}</dl></div></div>`
-    + `<div class="card"><div class="card-h"><div class="ic">${ic('verified')}</div><div class="sp"><h3>Lisensi &amp; Sertifikasi</h3><p>Dari Register 2 (${nf(sert.length)} dokumen)</p></div>${bolehTambah ? `<button class="btn" data-act="kar-tambah-dok" data-nrp="${esc(k.nrp)}">${ic('add')} Tambah Dokumen</button>` : ''}</div>${tSert}</div>`
-    + `<div class="card"><div class="card-h"><div class="ic">${ic('workspace_premium')}</div><div class="sp"><h3>Training Internal</h3><p>Dari MyHOMS Orange${ti ? ' (' + nf(ti.length) + ' catatan)' : ''}</p></div></div>${tTrn}</div>`
-    + `<div class="card"><div class="card-b"><p class="small muted" style="margin:0">${ic('info', 'xs')} Training eksternal serta pembanding dengan matriks kompetensi dan matriks training akan ditambahkan pada tahap berikutnya.</p></div></div>`;
+    + `<div class="card"><div class="card-b"><div class="pfl">${foto}<dl class="dl">${dl('Nama', esc(k.nama))}${dl('NRP', esc(k.nrp_orange || k.nrp))}${dl('Jabatan', esc(k.jabatan || '–'))}${dl('Departemen', esc(k.departemen || '–'))}${dl('Site Project', esc(namaSite(k.site) || '–'))}${dl('Kategori', esc(k.kategori || '–'))}${k.status === 'Tidak ada di Orange' ? dl('Status', pill('Tidak ada di Orange', 'a')) : ''}</dl></div></div></div>`
+    + cl('verified', 'Lisensi &amp; Sertifikasi', `Dari Register 2 (${nf(sert.length)} dokumen)`, tSert, bolehTambah ? `<button class="btn" data-act="kar-tambah-dok" data-nrp="${esc(k.nrp)}">${ic('add')} Tambah Dokumen</button>` : '')
+    + cl('workspace_premium', 'Matriks Kompetensi', me.ditemukan ? `Sertifikat wajib jabatan ${esc(me.jabatan)} ${ring(me.terpenuhi, me.total)}` : 'Sertifikat wajib sesuai jabatan', isiME)
+    + cl('workspace_premium', 'Training Internal', `Dari MyHOMS Orange${ti ? ' (' + nf(ti.length) + ' catatan)' : ''}`, tTrn)
+    + cl('workspace_premium', 'Matriks Training Internal', mi && mi.ditemukan && mi.total ? `Modul wajib jabatan ${esc(mi.jabatan)} ${ring(mi.terpenuhi, mi.total)}` : 'Modul wajib sesuai jabatan (TNA Head Office)', isiMI)
+    + `<div class="card"><div class="card-b"><p class="small muted" style="margin:0">${ic('info', 'xs')} Training eksternal akan ditambahkan pada tahap berikutnya.</p></div></div>`;
 }
 Object.assign(ACT, {
   'kar-buka': t => { const st = karSt(); st.nrp = t.dataset.nrp; st.profil = null; st.errP = ''; go('karyawan'); },
@@ -2452,6 +2474,25 @@ Object.assign(ACT, {
         + (d.peringatan.length ? `<div class="note a mt8">${ic('warning')}<div>${d.peringatan.map(x => `<div class="small">${esc(x)}</div>`).join('')}</div></div>` : '');
       $('#mdlF').innerHTML = '<button class="btn gh" data-act="mclose">Batal</button><button class="btn p" data-act="kar-sinkron-jalan">' + ic('sync') + ' Jalankan Sinkron</button>';
     } catch (e) { $('#mdlB').innerHTML = `<div class="note r">${ic('error')}<div>${esc(e.message)}</div></div>`; }
+  },
+  'kar-matriks': () => {
+    modal({ title: 'Impor Matriks Kompetensi', sub: 'Dari sheet "MATRIKS 01" (jabatan × sertifikat, tanda ✔). Impor menggantikan seluruh isi matriks.', icon: 'verified',
+      body: `${fld({ n: 'mxsrc', l: 'Alamat spreadsheet sumber (kosongkan = file bawaan)', full: true, ph: 'https://docs.google.com/spreadsheets/d/…' })}<div id="mxHasil" class="mt8"></div>`,
+      foot: '<button class="btn gh" data-act="mclose">Tutup</button><button class="btn p" data-act="kar-matriks-cek">Periksa Dulu</button>' });
+  },
+  'kar-matriks-cek': async t => {
+    const sumber = ($('#f_mxsrc') || {}).value || ''; busy(t, true, 'Memeriksa…');
+    try {
+      const res = await api('matriks.impor', { jalankan: false, sumber }), d = res.data, h = d.hasil, row = (a, b) => `<tr><td>${a}</td><td class="r"><b>${nf(b)}</b></td></tr>`;
+      $('#mxHasil').innerHTML = `<table class="tbl"><tbody>${row('Jabatan', h.jabatan)}${row('Jenis sertifikat', h.sertifikat)}${row('Pasangan jabatan–sertifikat', h.baris)}${row('Baru', h.tambah)}${row('Sama', h.sama)}${row('Akan dihapus', h.hapus)}</tbody></table>`
+        + (d.peringatan.length ? `<div class="note a mt8">${ic('warning')}<div>${d.peringatan.map(x => `<div class="small">${esc(x)}</div>`).join('')}</div></div>` : '');
+      $('#mdlF').innerHTML = '<button class="btn gh" data-act="mclose">Batal</button><button class="btn p" data-act="kar-matriks-jalan">Jalankan Impor</button>';
+    } catch (e) { busy(t, false); $('#mxHasil').innerHTML = `<div class="note r">${ic('error')}<div>${esc(e.message)}</div></div>`; }
+  },
+  'kar-matriks-jalan': async t => {
+    const sumber = ($('#f_mxsrc') || {}).value || ''; busy(t, true, 'Mengimpor…');
+    try { const res = await api('matriks.impor', { jalankan: true, sumber }); tutupModal(); const st = karSt(); st.profil = null; toast(`Matriks diimpor: ${res.data.hasil.baris} pasangan untuk ${res.data.hasil.jabatan} jabatan.`, 'success'); }
+    catch (e) { busy(t, false); toast(e.message, 'error'); }
   },
   'kar-sinkron-jalan': async t => {
     busy(t, true, 'Menyinkronkan…');
