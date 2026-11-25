@@ -182,7 +182,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.3.4';
+const APP_UI_VERSI = '2.3.5';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -2427,6 +2427,55 @@ function cariKar() {
 const cariKarTunda = debounce(cariKar, 350);
 CH['kar-nonaktif'] = t => { karSt().nonaktif = t.checked; cariKar(); };
 IN['kar-q'] = t => { karSt().q = t.value; cariKarTunda(); };
+/* ───────────── MATRIKS KOMPETENSI (lihat semua peran; ubah hanya SHEC Corporate) ───────────── */
+function mxState() { return S.ui.mx = S.ui.mx || {}; }
+function mxJabatanList(m) {
+  const peta = {}; m.rows.forEach(r => { peta[r.jabatan] = peta[r.jabatan] || { jabatan: r.jabatan, departemen: r.departemen, sert: [] }; peta[r.jabatan].sert.push(r.sertifikat); });
+  (m.tambahan || []).forEach(j => { if (!peta[j.jabatan]) peta[j.jabatan] = { jabatan: j.jabatan, departemen: j.departemen || '', sert: [], baru: true, karyawan: j.karyawan }; });
+  m.jabatanTanpaMatriks.forEach(j => { if (!peta[j.jabatan]) peta[j.jabatan] = { jabatan: j.jabatan, departemen: '', sert: [], baru: true, karyawan: j.karyawan }; });
+  return peta;
+}
+function mxRender() {
+  const m = mxState().data; if (!m) return;
+  const peta = mxJabatanList(m), names = Object.keys(peta).sort((a, b) => a.localeCompare(b));
+  const st = mxState(); if (!st.jab || !peta[st.jab]) st.jab = names[0] || '';
+  const semua = Array.from(new Set(m.rows.map(r => r.sertifikat).concat(st.ekstra || []))).sort((a, b) => a.localeCompare(b));
+  if (!st.pilih) st.pilih = new Set(st.jab ? peta[st.jab].sert : []);
+  const edit = m.bolehUbah, cur = peta[st.jab];
+  const opsJ = names.map(n => `<option value="${esc(n)}" ${n === st.jab ? 'selected' : ''}>${esc(n)}${peta[n].baru ? ' — belum ada di matriks' + (peta[n].karyawan ? ' (' + peta[n].karyawan + ' orang)' : '') : ''}</option>`).join('');
+  const cb = semua.map((x, i) => `<label class="cbx"><input type="checkbox" data-ch="mx-cek" data-s="${esc(x)}" ${st.pilih.has(x) ? 'checked' : ''} ${edit ? '' : 'disabled'}><span>${esc(x)}</span></label>`).join('');
+  $('#mdlB').innerHTML = `<div class="fld"><label for="mxJab">Jabatan</label><select class="inp" id="mxJab" data-ch="mx-jab">${opsJ}</select>${edit ? (st.tambahJ ? `<div class="row mt8" style="gap:8px"><input class="inp" id="mxJabBaru" maxlength="120" placeholder="Nama jabatan, persis seperti di data karyawan" style="flex:1"><button type="button" class="btn" data-act="mx-jabok">Tambah</button></div>` : `<div class="help">Jabatan belum ada? <button type="button" class="lnk" data-act="mx-jabbaru">Tambah jabatan baru</button></div>`) : ''}</div>
+    <div class="small muted mt8">${cur ? `${st.pilih.size} sertifikat wajib untuk <b>${esc(cur.jabatan)}</b>${cur.departemen ? ' (' + esc(cur.departemen) + ')' : ''}.` : ''}${edit ? '' : ' Anda hanya dapat melihat; perubahan dilakukan SHEC Corporate.'}</div>
+    <div class="cbgrid mt8" style="max-height:340px;overflow:auto">${cb || '<div class="muted small">Belum ada sertifikat di matriks.</div>'}</div>
+    ${edit ? `<div class="row mt8" style="gap:8px"><input class="inp" id="mxBaru" maxlength="120" placeholder="Sertifikat baru, mis. SIO Crane" style="flex:1"><button type="button" class="btn" data-act="mx-sertbaru">${ic('add')} Tambah</button></div>` : ''}`;
+  $('#mdlF').innerHTML = `<button class="btn gh" data-act="mclose">Tutup</button>${edit ? `<button class="btn p" data-act="mx-simpan">${ic('save')} Simpan ${esc(st.jab || '')}</button>` : ''}`;
+}
+CH['mx-jab'] = t => { const st = mxState(); st.jab = t.value; st.pilih = null; mxRender(); };
+CH['mx-cek'] = t => { const st = mxState(); t.checked ? st.pilih.add(t.dataset.s) : st.pilih.delete(t.dataset.s); };
+Object.assign(ACT, {
+  'mx-buka': async () => {
+    S.ui.mx = {};
+    modal({ title: 'Matriks Kompetensi', sub: 'Sertifikat yang wajib dimiliki per jabatan (dipakai di profil Personal Compliance).', icon: 'verified', size: 'lg', body: '<div class="sk" style="height:220px"></div>', foot: '<button class="btn gh" data-act="mclose">Tutup</button>' });
+    try { const res = await api('matriks.baca', {}); S.ui.mx.data = res.data; mxRender(); }
+    catch (e) { $('#mdlB').innerHTML = `<div class="note r">${ic('error')}<div>${esc(e.message)}</div></div>`; }
+  },
+  'mx-sertbaru': () => { const i = $('#mxBaru'), v = (i.value || '').trim(); if (!v) return; const st = mxState(); st.ekstra = (st.ekstra || []).concat(v); st.pilih.add(v); mxRender(); },
+  'mx-jabbaru': () => { mxState().tambahJ = true; mxRender(); const i = $('#mxJabBaru'); if (i) i.focus(); },
+  'mx-jabok': () => {
+    const nama = (($('#mxJabBaru') || {}).value || '').trim(); if (!nama) return;
+    const st = mxState(); st.tambahJ = false; st.data.tambahan = (st.data.tambahan || []).concat({ jabatan: nama, departemen: '' }); st.jab = nama; st.pilih = new Set(); mxRender();
+  },
+  'mx-simpan': async t => {
+    const st = mxState(); if (!st.jab) return; busy(t, true, 'Menyimpan…');
+    try {
+      const cur = mxJabatanList(st.data)[st.jab] || {};
+      const res = await api('matriks.simpan', { jabatan: st.jab, departemen: cur.departemen || '', sertifikat: Array.from(st.pilih) });
+      const r = await api('matriks.baca', {}); st.data = r.data; st.pilih = null; if (S.ui.kar) S.ui.kar.profil = null;
+      mxRender(); toast(res.message + (res.data.tambah || res.data.hapus ? ` (+${res.data.tambah} / −${res.data.hapus})` : ''), 'success');
+    } catch (e) { busy(t, false); toast(e.message, 'error', 'Gagal menyimpan matriks', true); }
+  }
+});
+
 function muatProfilKar() {
   const st = karSt(), nrp = st.nrp; st.muatP = true; st.errP = '';
   api('karyawan.profil', { nrp }).then(res => { if (st.nrp === nrp) st.profil = res.data; })
@@ -2438,7 +2487,8 @@ HAL.karyawan = el => {
   if (st.nrp) return renderProfilKar(el, st);
   muatInfoKar();
   const info = st.info, q = st.q.trim(), h = st.hasil;
-  const aksi = is(R.CORP) ? `<button class="btn" data-act="kar-matriks">${ic('verified')} Impor Matriks</button><button class="btn" data-act="kar-sinkron">${ic('sync')} Sinkron Karyawan</button>` : '';
+  const btnMx = `<button class="btn" data-act="mx-buka">${ic('verified')} Matriks Kompetensi</button>`;
+  const aksi = btnMx + (is(R.CORP) ? `<button class="btn" data-act="kar-matriks">${ic('verified')} Impor Matriks</button><button class="btn" data-act="kar-sinkron">${ic('sync')} Sinkron Karyawan</button>` : '');
   const ket = info ? (info.jumlah ? `${nf(info.jumlah)} karyawan dapat Anda cari${info.sinkronTerakhir ? ' • data Orange per ' + fmtWkt(info.sinkronTerakhir) : ''}.` : (is(R.CORP) ? 'Belum ada data karyawan. Klik "Sinkron Karyawan" untuk mengambil data dari database Orange.' : 'Belum ada data karyawan. Minta SHEC Corporate menjalankan sinkron karyawan.')) : 'Memuat…';
   let isi;
   if (q.length < 2) isi = kosong('badge', 'Cari karyawan', 'Ketik minimal 2 huruf nama, NRP, atau jabatan.');
