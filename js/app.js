@@ -182,7 +182,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.3.2';
+const APP_UI_VERSI = '2.3.3';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -2453,7 +2453,7 @@ function renderProfilKar(el, st) {
   if (p.matriksInternalError || p.trainingError) isiMI = kosong('cloud_off', 'Matriks training internal belum dapat dimuat', p.matriksInternalError || p.trainingError);
   else if (!mi || !mi.ditemukan) isiMI = kosong('info', 'Jabatan belum ada di matriks training', `Jabatan "${esc(k.jabatan || '–')}" belum terdaftar di matriks training internal (TNA Head Office).`);
   else if (!mi.total) isiMI = `<div class="card-b"><div class="note a">${ic('info')}<div class="small">Matriks untuk jabatan ini ditemukan, tetapi daftar modulnya belum dapat dibaca. Mohon kirim potongan ini ke pengembang: <span class="mono">${esc(mi.contohFormat || '(kosong)')}</span></div></div></div>`;
-  else isiMI = `<div class="tblw"><table class="tbl cards"><thead><tr><th>Modul training</th><th>Status</th><th>Tanggal / Tahun</th><th>Skor</th></tr></thead><tbody>${mi.modul.map(x => `<tr><td data-l="Modul"><div class="t1">${esc(x.modul)}</div></td><td data-l="Status">${pill(x.status, x.status === 'Sudah' ? 'g' : 'a')}</td><td data-l="Tanggal">${esc(x.tanggal || x.tahun || '–')}</td><td data-l="Skor">${esc(x.skor || '–')}</td></tr>`).join('')}</tbody></table></div>`;
+  else isiMI = `<div class="tblw"><table class="tbl cards"><thead><tr><th>Modul training</th><th>Status</th><th>Tanggal / Tahun</th><th>Skor</th></tr></thead><tbody>${mi.modul.map(x => `<tr><td data-l="Modul"><div class="t1">${esc(x.modul)}</div></td><td data-l="Status">${pill(x.status, x.status === 'Sudah' ? 'g' : 'a')}</td><td data-l="Tanggal">${esc(x.tanggal || x.tahun || x.catatan || '–')}</td><td data-l="Skor">${esc(x.skor || '–')}</td></tr>`).join('')}</tbody></table></div>`;
   el.innerHTML = hdr({ crumbs: [['Personal Compliance', 'karyawan'], [k.nama]], title: esc(k.nama), tag: k.nrp_orange || k.nrp, sub: 'Data identitas dari MyHOMS Orange (hanya-baca)' + (p.sinkron ? ', per ' + fmtWkt(p.sinkron) : '') + '.', actions: back })
     + `<div class="card"><div class="card-b"><div class="pfl">${foto}<dl class="dl">${dl('Nama', esc(k.nama))}${dl('NRP', esc(k.nrp_orange || k.nrp))}${dl('Jabatan', esc(k.jabatan || '–'))}${dl('Departemen', esc(k.departemen || '–'))}${dl('Site Project', esc(namaSite(k.site) || '–'))}${dl('Kategori', esc(k.kategori || '–'))}${k.status === 'Tidak ada di Orange' ? dl('Status', pill('Tidak ada di Orange', 'a')) : ''}</dl></div></div></div>`
     + cl('verified', 'Lisensi &amp; Sertifikasi', `Dari Register 2 (${nf(sert.length)} dokumen)`, tSert, bolehTambah ? `<button class="btn" data-act="kar-tambah-dok" data-nrp="${esc(k.nrp)}">${ic('add')} Tambah Dokumen</button>` : '')
