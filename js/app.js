@@ -2447,7 +2447,7 @@ function mxRender() {
   $('#mdlB').innerHTML = `<div class="fld"><label for="mxJab">Jabatan</label><select class="inp" id="mxJab" data-ch="mx-jab">${opsJ}</select>${edit ? (st.tambahJ ? `<div class="row mt8" style="gap:8px"><input class="inp" id="mxJabBaru" maxlength="120" placeholder="Nama jabatan, persis seperti di data karyawan" style="flex:1"><button type="button" class="btn" data-act="mx-jabok">Tambah</button></div>` : `<div class="help">Jabatan belum ada? <button type="button" class="lnk" data-act="mx-jabbaru">Tambah jabatan baru</button></div>`) : ''}</div>
     <div class="small muted mt8">${cur ? `${st.pilih.size} sertifikat wajib untuk <b>${esc(cur.jabatan)}</b>${cur.departemen ? ' (' + esc(cur.departemen) + ')' : ''}.` : ''}${edit ? '' : ' Anda hanya dapat melihat; perubahan dilakukan SHEC Corporate.'}</div>
     <div class="cbgrid mt8" style="max-height:340px;overflow:auto">${cb || '<div class="muted small">Belum ada sertifikat di matriks.</div>'}</div>
-    ${edit ? `<div class="row mt8" style="gap:8px"><input class="inp" id="mxBaru" maxlength="120" placeholder="Sertifikat baru, mis. SIO Crane" style="flex:1"><button type="button" class="btn" data-act="mx-sertbaru">${ic('add')} Tambah</button></div>` : ''}`;
+    ${edit ? `<div class="row mt8" style="gap:8px"><input class="inp" id="mxBaru" maxlength="120" placeholder="Sertifikat baru, mis. SIO Crane (klik Tambah, atau langsung Simpan)" style="flex:1"><button type="button" class="btn" data-act="mx-sertbaru">${ic('add')} Tambah</button></div>` : ''}`;
   $('#mdlF').innerHTML = `<button class="btn gh" data-act="mclose">Tutup</button>${edit ? `<button class="btn p" data-act="mx-simpan">${ic('save')} Simpan ${esc(st.jab || '')}</button>` : ''}`;
 }
 CH['mx-jab'] = t => { const st = mxState(); st.jab = t.value; st.pilih = null; mxRender(); };
@@ -2466,7 +2466,10 @@ Object.assign(ACT, {
     const st = mxState(); st.tambahJ = false; st.data.tambahan = (st.data.tambahan || []).concat({ jabatan: nama, departemen: '' }); st.jab = nama; st.pilih = new Set(); mxRender();
   },
   'mx-simpan': async t => {
-    const st = mxState(); if (!st.jab) return; busy(t, true, 'Menyimpan…');
+    const st = mxState(); if (!st.jab) return;
+    const ketik = (($('#mxBaru') || {}).value || '').trim();   // nama yang sudah diketik tetapi belum menekan "Tambah" ikut disimpan
+    if (ketik) { st.ekstra = (st.ekstra || []).concat(ketik); st.pilih.add(ketik); }
+    busy(t, true, 'Menyimpan…');
     try {
       const cur = mxJabatanList(st.data)[st.jab] || {};
       const res = await api('matriks.simpan', { jabatan: st.jab, departemen: cur.departemen || '', sertifikat: Array.from(st.pilih) });
