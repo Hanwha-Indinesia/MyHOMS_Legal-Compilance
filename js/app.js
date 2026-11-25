@@ -182,7 +182,7 @@ function pesanJaringan(err) {
   return m || 'Terjadi kesalahan tak terduga.';
 }
 /* Versi tampilan (naikkan bersama VERSI_CACHE di sw.js). Versi server diambil dari setiap respons (res.v). */
-const APP_UI_VERSI = '2.3.3';
+const APP_UI_VERSI = '2.3.4';
 function teksVersi() { return 'MyHOMS versi ' + APP_UI_VERSI; }
 function tampilVersi() {
   const el = document.getElementById('sbVer');
@@ -312,7 +312,7 @@ function busy(btn, on, txt) {
   if (on) { btn.dataset.h = btn.innerHTML; btn.classList.add('busy'); btn.innerHTML = `<span class="spin s ${/\b(p|d|gn)\b/.test(btn.className) ? 'w' : ''}"></span> ${esc(txt || 'Memproses…')}`; }
   else { btn.classList.remove('busy'); if (btn.dataset.h) btn.innerHTML = btn.dataset.h; }
 }
-function toast(msg, type, judul) {
+function toast(msg, type, judul, tetap) {
   type = type || 'info';
   const el = document.createElement('div');
   el.className = 'toast ' + type;
@@ -321,7 +321,7 @@ function toast(msg, type, judul) {
   const hapus = () => { el.classList.add('out'); setTimeout(() => el.remove(), 200); };
   el.querySelector('button').onclick = hapus;
   $('#toasts').appendChild(el);
-  setTimeout(hapus, type === 'error' ? 7500 : 4200);
+  if (!tetap) setTimeout(hapus, type === 'error' ? 7500 : 4200);
 }
 function modal(o) {
   const root = $('#mroot');
@@ -449,18 +449,30 @@ function validasi(root, ekstra) {
 }
 
 /* ───────────── BERKAS: unggah, pratinjau, unduh ───────────── */
-const MIME_OK = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png', 'application/vnd.ms-excel': 'xls', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx' };
+const MIME_OK = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png', 'application/vnd.ms-excel': 'xls', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx', 'application/msword': 'doc', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx' };
 /** Berkas PDF yang dipilih sementara di form "Usulkan Regulasi" sebelum id_antrean ada; diunggah segera setelah usulan terkirim. */
 let _usulBerkas = null;
 function b64Blob(b64, mime) { const bin = atob(b64); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return new Blob([u8], { type: mime }); }
 function unduhBlob(blob, nama) { const a = document.createElement('a'); const url = URL.createObjectURL(blob); a.href = url; a.download = nama; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 6000); }
-function fileB64(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(new Error('Gagal membaca berkas.')); r.readAsDataURL(file); }); }
-function pilihBerkas(cb) { const i = document.createElement('input'); i.type = 'file'; i.multiple = true; i.accept = '.pdf,.jpg,.jpeg,.png,.xls,.xlsx'; i.onchange = () => cb(Array.from(i.files || [])); i.click(); }
+/** Kompres gambar JPG/PNG di perangkat: sisi terpanjang maks. 2000 px, JPEG kualitas 0,8. Bila hasil tidak lebih kecil, berkas asli dipakai. */
+async function kompresGambar(file) {
+  try {
+    if (!/^image\/(jpeg|png)$/.test(file.type) || file.size < 300 * 1024 || typeof createImageBitmap !== 'function') return file;
+    const bmp = await createImageBitmap(file), maks = 2000, k = Math.min(1, maks / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+    const cx = cv.getContext('2d'); if (file.type === 'image/jpeg') { cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); }
+    cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+    const blob = await new Promise(r => cv.toBlob(r, file.type, 0.8));
+    return blob && blob.size < file.size ? blob : file;
+  } catch (e) { return file; }
+}
+function fileB64(file) { return kompresGambar(file).then(f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(new Error('Gagal membaca berkas.')); r.readAsDataURL(f); })); }
+function pilihBerkas(cb) { const i = document.createElement('input'); i.type = 'file'; i.multiple = true; i.accept = '.pdf,.jpg,.jpeg,.png,.xls,.xlsx,.doc,.docx'; i.onchange = () => cb(Array.from(i.files || [])); i.click(); }
 function cekBerkas(f) {
   const maks = Number(cfg('maks_upload_mb', 10));
   let mime = f.type;
   if (!MIME_OK[mime]) { const ext = (f.name.split('.').pop() || '').toLowerCase(); mime = Object.keys(MIME_OK).find(k => MIME_OK[k] === ext || (ext === 'jpeg' && MIME_OK[k] === 'jpg')) || ''; }
-  if (!mime) return { err: `"${f.name}": format tidak diizinkan (PDF, JPG, PNG, Excel).` };
+  if (!mime) return { err: `"${f.name}": format tidak diizinkan (PDF, JPG, PNG, Excel, Word).` };
   if (f.size > maks * 1048576) return { err: `"${f.name}": melebihi ${maks} MB.` };
   return { mime };
 }
@@ -478,13 +490,13 @@ async function unggah(entitas, id, files, site) {
       toast(res.message, 'success');
     } catch (e) {
       S.data.lampiran = S.data.lampiran.filter(l => l.id_lampiran !== tmp.id_lampiran);
-      toast(e.message, 'error', 'Unggah gagal');
+      toast('Berkas "' + f.name + '" gagal diunggah: ' + e.message + ' Buka dokumennya lalu tambahkan berkas lagi.', 'error', 'Unggah gagal', true);
     }
     S.idx = null; rerender(true);
   }
   jadwalSync(500);
 }
-function fileIkon(mime) { return /image/.test(mime) ? ['image', 'img'] : (/sheet|excel/.test(mime) ? ['table_view', 'xls'] : ['picture_as_pdf', '']); }
+function fileIkon(mime) { return /image/.test(mime) ? ['image', 'img'] : (/sheet|excel/.test(mime) ? ['table_view', 'xls'] : (/word/.test(mime) ? ['description', ''] : ['picture_as_pdf', ''])); }
 function daftarBerkas(list, o) {
   o = o || {};
   if (!list.length) return o.kosong === false ? '' : `<div class="muted small" style="padding:6px 2px">${esc(o.teksKosong || 'Belum ada berkas terlampir.')}</div>`;
@@ -1602,30 +1614,49 @@ HAL.reg2d = (el, p) => {
 function formReg2(r, pre) {
   const baru = !r, pic = is(R.PIC);
   r = r || Object.assign({ jenis_dokumen: 'Izin', site: S.ui.site !== 'ALL' ? S.ui.site : (mySites() || [''])[0] }, pre || {});
+  const jp = r.jenis_pemegang || (r.nrp_pemegang ? 'Karyawan' : (r.jenis_dokumen === 'Izin' ? 'Perusahaan' : 'Karyawan'));
+  S.ui.r2Files = [];
   // Akun Site hanya melihat pengguna dari site-nya sendiri; Corporate melihat semua
   const sc = is(R.SITE) ? mySites() : null;
   const users = (S.data.users || []).filter(u => u.status === 'Aktif' && (!sc || (u.role !== R.CORP && u.role !== R.MGT && String(u.site || '').split(',').map(x => x.trim()).some(x => sc.includes(x))) || u.nrp === r.pic_nrp)).map(u => [u.nrp, `${u.nama} (${u.nrp}) — ${ROLE_LABEL[u.role] || u.role}`]);
   modal({ title: baru ? 'Tambah Izin / Lisensi / Sertifikasi' : 'Ubah ' + r.id_izin, sub: baru ? 'Status masa berlaku dihitung otomatis dari tanggal kedaluwarsa.' : r.nama_dokumen, icon: 'verified', size: 'lg',
     body: `<form id="fReg2" class="frm" novalidate>
       <div class="fsec"><span class="bar"></span>Data Dokumen</div>
-      ${fld({ n: 'jenis_dokumen', l: 'Jenis dokumen', t: 'select', opts: ['Izin', 'Lisensi', 'Sertifikasi'], v: r.jenis_dokumen, req: true, ph: false })}${fld({ n: 'nomor_dokumen', l: 'Nomor dokumen', v: r.nomor_dokumen, req: true, max: 120 })}
+      ${fld({ n: 'jenis_dokumen', l: 'Jenis dokumen', t: 'select', opts: ['Izin', 'Lisensi', 'Sertifikasi'], v: r.jenis_dokumen, req: true, ph: false, ch: baru ? 'reg2-jenis' : '' })}${fld({ n: 'nomor_dokumen', l: 'Nomor dokumen', v: r.nomor_dokumen, req: true, max: 120 })}
       ${fld({ n: 'nama_dokumen', l: 'Nama dokumen', v: r.nama_dokumen, req: true, full: true, max: 300, ph: 'Contoh: Suket Riksa Uji Crane Mobile 50T' })}
       ${fld({ n: 'objek', l: 'Objek / unit / personel', v: r.objek, max: 300 })}${fld({ n: 'nama_pemegang', l: 'Nama pemegang', v: r.nama_pemegang, req: true, max: 200 })}
-      ${fld({ n: 'nrp_pemegang', l: 'NRP pemegang', v: r.nrp_pemegang, max: 30, full: true, ro: pic, help: 'Wajib untuk Lisensi dan Sertifikasi (agar tampil di Personal Compliance). Kosongkan hanya untuk jenis Izin. Contoh: HMSI-188.' })}
+      ${fld({ n: 'jenis_pemegang', l: 'Pemegang dokumen', t: 'select', opts: [['Karyawan', 'Karyawan (perorangan)'], ['Perusahaan', 'Perusahaan / Site / Unit']], v: jp, req: true, ph: false, ro: pic, ch: 'reg2-pemegang', full: true, help: 'Pilih Karyawan untuk lisensi/sertifikat milik orang (SIO, SIMPER, dll). Pilih Perusahaan untuk izin atau sertifikat milik site/unit (SPIP, boiler, genset, dll).' })}
+      <div class="full ${jp === 'Perusahaan' ? 'hide' : ''}" id="nrpWrap">${pic ? '' : `<div class="fld"><label for="nrpQ">Cari karyawan (nama atau NRP)</label><input class="inp" id="nrpQ" type="search" autocomplete="off" data-in="reg2-nrp-q" placeholder="Ketik minimal 2 huruf…"><div id="nrpHasil" class="files mt8"></div></div>`}
+      <div class="frm" style="padding:0">${fld({ n: 'nrp_pemegang', l: 'NRP pemegang', v: r.nrp_pemegang, max: 30, full: true, ro: pic, req: jp === 'Karyawan' && !pic, help: 'Terisi otomatis bila Anda memilih dari hasil pencarian. Contoh: HMSI-188.' })}</div></div>
       ${fld({ n: 'lembaga_penerbit', l: 'Lembaga penerbit / PJK3', v: r.lembaga_penerbit, max: 200 })}${fld({ n: 'id_reg1', l: 'Dasar hukum (Register 1)', t: 'select', opts: (S.data.reg1 || []).filter(aktif).map(x => [x.id_reg1, x.id_reg1 + ' — ' + judulReg(x)]), v: r.id_reg1, ph: '— Opsional —' })}
       <div class="fsec"><span class="bar"></span>Lokasi &amp; Penanggung Jawab</div>
       ${fld({ n: 'site', l: 'Site', t: 'select', opts: siteList().map(s => [s.kode, s.nama]), v: r.site, req: true, ro: pic || !!(pre && pre.dariEval) })}${fld({ n: 'departemen', l: 'Departemen', t: 'select', opts: deptList().map(d => [d.kode, d.nama]), v: r.departemen, req: true, ro: pic })}
       ${fld({ n: 'pic_nrp', l: 'PIC (pengguna terdaftar)', t: 'select', opts: users, v: r.pic_nrp, req: true, full: true, ro: pic })}
       <div class="fsec"><span class="bar"></span>Masa Berlaku</div>
       ${fld({ n: 'tanggal_terbit', l: 'Tanggal terbit', t: 'date', v: r.tanggal_terbit, req: true })}${fld({ n: 'tanggal_kedaluwarsa', l: 'Tanggal kedaluwarsa', t: 'date', v: r.tanggal_kedaluwarsa, help: 'Kosongkan bila dokumen berlaku tanpa batas waktu.' })}
+      <div class="full fld"><label>Lampirkan berkas</label><div class="drop" data-act="r2-file" role="button" tabindex="0"><div class="dic">${ic('cloud_upload')}</div>Klik untuk memilih berkas<small>PDF, JPG, PNG, Excel, Word • maks. ${esc(cfg('maks_upload_mb', 10))} MB • foto dikompres otomatis • diunggah setelah disimpan</small></div><div id="r2List" class="files mt8"></div></div>
       ${fld({ n: 'catatan', l: 'Catatan', t: 'textarea', rows: 2, v: r.catatan, full: true, max: 2000 })}</form>`,
     foot: `<span class="lf">${ic('shield', 's')} Tercatat di Audit_Log</span><button class="btn gh" data-act="mclose">Batal</button><button class="btn p" data-act="reg2-simpan" data-id="${esc(r.id_izin || '')}" ${pre && pre.dariEval ? `data-eval="1" data-site="${esc(r.site)}"` : ''}>${ic('save')} Simpan</button>` });
 }
+function r2Daftar() { const el = $('#r2List'); if (el) el.innerHTML = (S.ui.r2Files || []).map((f, i) => `<div class="file"><div class="fic">${ic('attach_file')}</div><div class="fn"><b>${esc(f.name)}</b><span>${ukuran(f.size)} • diunggah setelah disimpan</span></div><button type="button" class="btn gh ic sm" data-act="r2-hapus" data-i="${i}" aria-label="Hapus">${ic('close')}</button></div>`).join(''); }
+CH['reg2-jenis'] = t => { const p = $('[name=jenis_pemegang]'); if (!p || p.disabled) return; p.value = t.value === 'Izin' ? 'Perusahaan' : 'Karyawan'; CH['reg2-pemegang'](p); };
+CH['reg2-pemegang'] = t => { const w = $('#nrpWrap'), kar = t.value === 'Karyawan'; if (!w) return; w.classList.toggle('hide', !kar); const inp = $('[name=nrp_pemegang]', w); if (inp) { inp.required = kar && !is(R.PIC); const lb = inp.closest('.fld').querySelector('label'); if (lb) lb.innerHTML = 'NRP pemegang' + (inp.required ? '<span class="rq">*</span>' : ''); } };
+const r2CariTunda = debounce(q => {
+  const el = $('#nrpHasil'); if (!el) return;
+  if (q.length < 2) { el.innerHTML = ''; return; }
+  api('karyawan.cari', { q }).then(res => { const e2 = $('#nrpHasil'); if (!e2 || ($('#nrpQ') || {}).value.trim() !== q) return; const rows = res.data.rows.slice(0, 8); e2.innerHTML = rows.length ? rows.map(k => `<div class="file"><div class="fic">${ic('person')}</div><div class="fn"><b>${esc(k.nama)}</b><span>${esc(k.nrp)} • ${esc(k.jabatan || '-')} • ${esc(k.site || '-')}</span></div><button type="button" class="btn sm" data-act="r2-nrp-pilih" data-nrp="${esc(k.nrp)}" data-nama="${esc(k.nama)}">Pilih</button></div>`).join('') : '<div class="muted small">Tidak ditemukan.</div>'; })
+    .catch(e => { const e2 = $('#nrpHasil'); if (e2) e2.innerHTML = `<div class="muted small">${esc(e.message)}</div>`; });
+}, 350);
+IN['reg2-nrp-q'] = t => r2CariTunda(t.value.trim());
 Object.assign(ACT, {
+  'r2-file': () => pilihBerkas(files => { files.forEach(f => { const c = cekBerkas(f); if (c.err) toast(c.err, 'error'); else S.ui.r2Files.push(f); }); r2Daftar(); }),
+  'r2-hapus': t => { S.ui.r2Files.splice(Number(t.dataset.i), 1); r2Daftar(); },
+  'r2-nrp-pilih': t => { const f = $('#fReg2'); if (!f) return; $('[name=nrp_pemegang]', f).value = t.dataset.nrp; const nm = $('[name=nama_pemegang]', f); if (nm) nm.value = t.dataset.nama; $('#nrpHasil').innerHTML = ''; $('#nrpQ').value = ''; setErr(f, 'nrp_pemegang', null); },
   'reg2-simpan': t => {
     const f = $('#fReg2');
-    if (!validasi(f, x => ({ tanggal_kedaluwarsa: x.tanggal_kedaluwarsa && x.tanggal_kedaluwarsa < x.tanggal_terbit ? 'Tidak boleh sebelum tanggal terbit.' : '', nrp_pemegang: !is(R.PIC) && x.jenis_dokumen !== 'Izin' && !String(x.nrp_pemegang || '').trim() ? 'Wajib diisi untuk Lisensi dan Sertifikasi.' : '' }))) return;
-    const v = bacaForm(f), id = t.dataset.id;
+    if (!validasi(f, x => ({ tanggal_kedaluwarsa: x.tanggal_kedaluwarsa && x.tanggal_kedaluwarsa < x.tanggal_terbit ? 'Tidak boleh sebelum tanggal terbit.' : '', nrp_pemegang: !is(R.PIC) && x.jenis_pemegang === 'Karyawan' && !String(x.nrp_pemegang || '').trim() ? 'Wajib diisi bila pemegang dokumen adalah Karyawan.' : '' }))) return;
+    const v = bacaForm(f), id = t.dataset.id, files = (S.ui.r2Files || []).slice();
+    if (v.jenis_pemegang === 'Perusahaan') v.nrp_pemegang = '';
     if (is(R.PIC) && id) { const r = I().reg2[id]; v.site = r.site; v.departemen = r.departemen; v.pic_nrp = r.pic_nrp; }
     const dariEval = t.dataset.eval === '1' && S.ui.ef;
     if (dariEval) v.site = t.dataset.site;
@@ -1634,7 +1665,7 @@ Object.assign(ACT, {
     tutupModal();
     kirim('reg2.simpan', v, {
       apply: () => { upsert('reg2', 'id_izin', Object.assign({}, v, { id_izin: tmpId, status_aktif: 'Active', _tmp: !id, created_at: new Date().toISOString().slice(0, 19).replace('T', ' ') })); if (dariEval && S.ui.ef) { S.ui.ef.izin.push(tmpId); const h = $('[name=id_izin]', $('#efForm')); if (h) h.value = S.ui.ef.izin.join(','); PARTIAL.efIzin(); } },
-      sukses: res => { gantiId('reg2', 'id_izin', tmpId, res.data.reg2); S.idx = null; if (S.ui.kar) { S.ui.kar.profil = null; if (S.ui.sec === 'karyawan') renderSec('karyawan'); } if (dariEval && S.ui.ef) { const L = S.ui.ef.izin, i = L.indexOf(tmpId); if (i >= 0) { L[i] = res.data.reg2.id_izin; const h = $('[name=id_izin]', $('#efForm')); if (h) h.value = L.join(','); PARTIAL.efIzin(); } } },
+      sukses: res => { gantiId('reg2', 'id_izin', tmpId, res.data.reg2); S.idx = null; if (files.length) unggah('REG2', res.data.reg2.id_izin, files, res.data.reg2.site); if (S.ui.kar) { S.ui.kar.profil = null; if (S.ui.sec === 'karyawan') renderSec('karyawan'); } if (dariEval && S.ui.ef) { const L = S.ui.ef.izin, i = L.indexOf(tmpId); if (i >= 0) { L[i] = res.data.reg2.id_izin; const h = $('[name=id_izin]', $('#efForm')); if (h) h.value = L.join(','); PARTIAL.efIzin(); } } },
       gagal: () => setTimeout(() => { if (dariEval && S.ui.ef) { S.ui.ef.izin = S.ui.ef.izin.filter(x => x !== tmpId); PARTIAL.efIzin(); } formReg2(id ? Object.assign({}, I().reg2[id] || {}, v) : null, id ? null : Object.assign({}, v, { dariEval: !!dariEval })); }, 50)
     }).catch(() => { });
   },
